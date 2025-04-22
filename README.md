@@ -8,14 +8,5 @@ SlideFlow is a web application designed to help students, professionals, and tea
 - **Timing & Practice**: Set and practice individual slide timings with real-time feedback
 - **User-Friendly Interface**: Simple, intuitive design that requires minimal setup
 
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-
 ## Link
 tinyurl.com/1slideflow
