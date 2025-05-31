@@ -16,6 +16,7 @@ export default function PracticePage() {
   const [error, setError] = useState<string | null>(null);
   const [totalSlides, setTotalSlides] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [showStats, setShowStats] = useState(false);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -177,18 +178,15 @@ export default function PracticePage() {
   };
 
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold mb-8 text-center text-indigo-800 border-b pb-4">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 inline-block mr-2 mb-1" viewBox="0 0 20 20" fill="currentColor">
-          <path d="M2 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1H3a1 1 0 01-1-1V4zM8 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1H9a1 1 0 01-1-1V4zM15 3a1 1 0 00-1 1v12a1 1 0 001 1h2a1 1 0 001-1V4a1 1 0 00-1-1h-2z" />
-        </svg>
+    <div className="container mx-auto p-4 bg-white min-h-screen">
+      <h1 className="text-3xl font-bold mb-4 text-center text-black border-b pb-2">
         Practice Your Presentation
       </h1>
       
-      <Card className="p-6 mb-8 shadow-md bg-white border-indigo-100">
+      <Card className="p-4 mb-4 shadow-md bg-white border-gray-200">
         <div className="flex items-center gap-4">
           <Label htmlFor="pdf-upload" className="cursor-pointer">
-            <Button variant="outline" size="lg" asChild className="border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 transition-all">
+            <Button variant="outline" size="lg" asChild className="border-gray-300 hover:bg-gray-50 hover:text-gray-900 transition-all">
               <div>
                 <Upload className="mr-2 h-5 w-5" />
                 Upload Presentation PDF
@@ -203,7 +201,7 @@ export default function PracticePage() {
             />
           </Label>
           {pdfFile && (
-            <span className="text-sm bg-indigo-50 text-indigo-700 px-3 py-2 rounded-md flex items-center">
+            <span className="text-sm bg-gray-50 text-gray-700 px-3 py-2 rounded-md flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
               </svg>
@@ -222,11 +220,10 @@ export default function PracticePage() {
       </Card>
 
       {pdfFile && (
-        <Card className="p-6 shadow-lg bg-white border-indigo-100">
-          <div className="flex flex-col items-center gap-6">
-            <div className="flex w-full gap-6">
+        <Card className="p-4 shadow-lg bg-white border-gray-200">
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex w-full gap-4">
               <div className="flex-1 aspect-video bg-gray-100 rounded-lg flex items-center justify-center shadow-md overflow-hidden">
-                {/* Use key to control when PDFViewer should re-render */}
                 <div className="w-full h-full pdf-container" key={`pdf-${currentSlide}`}>
                   <PDFViewer 
                     file={pdfFile} 
@@ -235,40 +232,263 @@ export default function PracticePage() {
                   />
                 </div>
               </div>
-              <div className="w-72 bg-white border rounded-lg p-5 shadow-md">
-                <h3 className="text-lg font-semibold mb-3 text-indigo-700 flex items-center border-b pb-2">
+              <div className="w-72 bg-white border rounded-lg p-4 shadow-md flex flex-col h-[580px]">
+                <h3 className="text-lg font-semibold mb-2 text-gray-700 flex items-center border-b pb-2">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                   </svg>
                   Slide Timings
                 </h3>
-                <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                <div className="space-y-2 overflow-y-auto pr-1 flex-grow">
                   {Array.from({ length: totalSlides }, (_, i) => (
                     <div 
                       key={i}
-                      className={`p-3 border rounded-lg flex justify-between items-center transition-all duration-200 ${
+                      className={`p-2 border rounded-lg flex justify-between items-center transition-all duration-200 ${
                         currentSlide === i + 1 
-                          ? 'bg-indigo-50 border-indigo-300 shadow-sm' 
+                          ? 'bg-gray-50 border-gray-300 shadow-sm' 
                           : 'hover:bg-gray-50'
                       }`}
                     >
-                      <span className={`font-medium ${currentSlide === i + 1 ? 'text-indigo-700' : ''}`}>
+                      <span className={`font-medium ${currentSlide === i + 1 ? 'text-gray-700' : ''}`}>
                         Slide {i + 1}
                       </span>
-                      <span className={`font-mono text-sm px-3 py-1 rounded ${
+                      <span className={`font-mono text-sm px-2 py-1 rounded ${
                         slideTimings[i] 
-                          ? 'bg-indigo-100 text-indigo-800' 
-                          : 'bg-gray-100 text-gray-400'
+                          ? 'bg-gray-100 text-gray-800' 
+                          : 'bg-gray-50 text-gray-400'
                       }`}>
                         {formatTime(slideTimings[i] || 0)}
                       </span>
                     </div>
                   ))}
                 </div>
+                <Button
+                  className="mt-4"
+                  variant="outline"
+                  onClick={() => setShowStats((prev) => !prev)}
+                >
+                  {showStats ? 'Hide Statistics' : 'Show Statistics'}
+                </Button>
+                {showStats && (
+                  <>
+                    {/* Modal Backdrop */}
+                    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                      {/* Modal Content */}
+                      <div className="bg-white rounded-lg border shadow-lg p-6 w-full max-w-xl relative">
+                        <button
+                          className="absolute top-2 right-2 text-gray-500 hover:text-black text-2xl font-bold"
+                          onClick={() => setShowStats(false)}
+                          aria-label="Close"
+                        >
+                          &times;
+                        </button>
+                        <h3 className="text-lg font-semibold text-gray-700 mb-2 flex items-center border-b pb-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M3 3a1 1 0 000 2h10a1 1 0 100-2H3zm0 4a1 1 0 000 2h10a1 1 0 100-2H3zm0 4a1 1 0 100 2h10a1 1 0 100-2H3z" clipRule="evenodd" />
+                          </svg>
+                          Presentation Statistics
+                        </h3>
+                        {/* --- Statistics Section Content Start --- */}
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          <div className="bg-gray-50 rounded-lg p-2 text-center">
+                            <p className="text-sm text-gray-500 mb-1">Total Time</p>
+                            <p className="text-xl font-bold text-gray-700">
+                              {formatTime(slideTimings.reduce((total, time) => total + (time || 0), 0))}
+                            </p>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-2 text-center">
+                            <p className="text-sm text-gray-500 mb-1">Average Time/Slide</p>
+                            <p className="text-xl font-bold text-gray-700">
+                              {formatTime(Math.round(
+                                slideTimings.reduce((total, time) => total + (time || 0), 0) / 
+                                (slideTimings.filter(t => t > 0).length || 1)
+                              ))}
+                            </p>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-2 text-center">
+                            <p className="text-sm text-gray-500 mb-1">Longest Slide</p>
+                            <p className="text-xl font-bold text-gray-700">
+                              {(() => {
+                                const maxTime = Math.max(...slideTimings.filter(t => t > 0));
+                                const maxIndex = slideTimings.findIndex(t => t === maxTime);
+                                return maxTime > 0 ? `Slide ${maxIndex + 1} (${formatTime(maxTime)})` : 'N/A';
+                              })()}
+                            </p>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-2 text-center">
+                            <p className="text-sm text-gray-500 mb-1">Shortest Slide</p>
+                            <p className="text-xl font-bold text-gray-700">
+                              {(() => {
+                                const timedSlides = slideTimings.filter(t => t > 0);
+                                const minTime = timedSlides.length > 0 ? Math.min(...timedSlides) : 0;
+                                const minIndex = slideTimings.findIndex(t => t === minTime);
+                                return minTime > 0 ? `Slide ${minIndex + 1} (${formatTime(minTime)})` : 'N/A';
+                              })()}
+                            </p>
+                          </div>
+                        </div>
+                        <h4 className="font-medium text-gray-700 mb-2">Time Distribution</h4>
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm text-gray-500">Time spent on each slide</span>
+                            <div className="flex items-center">
+                              <div className="w-3 h-3 bg-gray-600 rounded-full mr-1"></div>
+                              <span className="text-xs text-gray-500">Current Slide</span>
+                            </div>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg border border-gray-100 h-56 relative mt-2">
+                            {/* Y-axis grid lines and labels */}
+                            <div className="absolute left-0 top-0 h-full w-full">
+                              {[0, 1, 2, 3, 4].map((i) => {
+                                const maxTimeValue = Math.max(...slideTimings.filter(t => t > 0), 60);
+                                const timeValue = Math.round((4-i) * (maxTimeValue / 4));
+                                return (
+                                  <div key={i} className="absolute w-full border-t border-gray-100" style={{ top: `${i * 25}%`, left: 0 }}>
+                                    {/* Removed Y-axis label: <span className="absolute text-xs text-gray-400" style={{ left: '0px', top: '-8px' }}>{formatTime(timeValue)}</span> */}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div className="absolute left-8 top-0 right-0 bottom-0 flex flex-col">
+                              <div className="flex-1 relative">
+                                <svg className="w-full h-full" viewBox={`0 0 ${Math.max(slideTimings.length * 60, 300)} 100`} preserveAspectRatio="xMidYMid meet">
+                                  {/* Line */}
+                                  {slideTimings.filter(t => t > 0).length > 0 && (
+                                    <polyline
+                                      points={slideTimings.map((time, index) => {
+                                        const maxTime = Math.max(...slideTimings.filter(t => t > 0), 60);
+                                        const x = (index * 60) + 30;
+                                        const y = 100 - ((time || 0) / maxTime * 100);
+                                        return `${x},${y}`;
+                                      }).join(' ')}
+                                      fill="none"
+                                      stroke="#4B5563"
+                                      strokeWidth="3"
+                                      strokeLinejoin="round"
+                                      strokeLinecap="round"
+                                    />
+                                  )}
+                                  {/* Data Points */}
+                                  {slideTimings.map((time, index) => {
+                                    const maxTime = Math.max(...slideTimings.filter(t => t > 0), 60);
+                                    const x = (index * 60) + 30;
+                                    const y = 100 - ((time || 0) / maxTime * 100);
+                                    const isCurrentSlide = currentSlide === index + 1;
+                                    return (
+                                      <g key={index} className="group">
+                                        <circle
+                                          cx={x}
+                                          cy={y}
+                                          r={isCurrentSlide ? 6 : 4}
+                                          fill={isCurrentSlide ? "#374151" : "#6B7280"}
+                                          stroke="white"
+                                          strokeWidth="2"
+                                        />
+                                        <g className="opacity-0 group-hover:opacity-100">
+                                          <rect
+                                            x={x - 25}
+                                            y={Math.max(5, y - 35)}
+                                            width="50"
+                                            height="20"
+                                            rx="4"
+                                            fill="#374151"
+                                          />
+                                          <text
+                                            x={x}
+                                            y={Math.max(20, y - 21)}
+                                            textAnchor="middle"
+                                            fill="white"
+                                            fontSize="10"
+                                          >
+                                            {formatTime(time || 0)}
+                                          </text>
+                                          <polygon
+                                            points={`${x-5},${Math.max(25, y - 15)} ${x},${Math.max(30, y - 10)} ${x+5},${Math.max(25, y - 15)}`}
+                                            fill="#374151"
+                                          />
+                                        </g>
+                                      </g>
+                                    );
+                                  })}
+                                </svg>
+                              </div>
+                              <div className="h-8 relative border-t border-gray-200 flex">
+                                {slideTimings.length > 0 && slideTimings.map((_, index) => {
+                                  const totalWidth = Math.max(slideTimings.length * 60, 300);
+                                  const percentPos = (index * 60 + 30) / totalWidth * 100;
+                                  return (
+                                    <div 
+                                      key={index} 
+                                      className="absolute flex flex-col items-center"
+                                      style={{ 
+                                        left: `${percentPos}%`, 
+                                        transform: 'translateX(-50%)'
+                                      }}
+                                    >
+                                      <div className="h-2 w-px bg-gray-300 mb-1"></div>
+                                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs ${
+                                        currentSlide === index + 1 ? 'bg-gray-600' : 'bg-gray-400'
+                                      }`}>
+                                        {index + 1}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-center text-xs text-gray-500 mt-2">Slide Number</div>
+                        </div>
+                        {/* Tips based on statistics */}
+                        {slideTimings.filter(t => t > 0).length > 2 && (
+                          <div className="mt-3 text-sm bg-gray-50 p-3 rounded-lg border border-gray-200">
+                            <h4 className="font-medium text-gray-700 mb-1">Practice Tips</h4>
+                            <ul className="list-disc pl-5 text-gray-700 space-y-1">
+                              {(() => {
+                                const tips = [];
+                                const timedSlides = slideTimings.filter(t => t > 0);
+                                const avgTime = timedSlides.reduce((total, t) => total + t, 0) / timedSlides.length;
+                                const maxTime = Math.max(...timedSlides);
+                                const maxIndex = slideTimings.findIndex(t => t === maxTime);
+                                if (maxTime > avgTime * 1.5 && maxTime > 30) {
+                                  tips.push(
+                                    <li key="long">Slide {maxIndex + 1} took significantly longer than others. Consider simplifying its content.</li>
+                                  );
+                                }
+                                const minTime = Math.min(...timedSlides);
+                                const minIndex = slideTimings.findIndex(t => t === minTime);
+                                if (minTime < avgTime * 0.5 && maxTime > 20) {
+                                  tips.push(
+                                    <li key="short">Slide {minIndex + 1} was very brief. Consider adding more detail or combining with another slide.</li>
+                                  );
+                                }
+                                const stdDev = Math.sqrt(
+                                  timedSlides.reduce((sum, time) => sum + Math.pow(time - avgTime, 2), 0) / timedSlides.length
+                                );
+                                if (stdDev > avgTime * 0.7) {
+                                  tips.push(
+                                    <li key="consistency">Your timing varies significantly between slides. Try to maintain more consistent pacing.</li>
+                                  );
+                                }
+                                if (tips.length === 0) {
+                                  tips.push(
+                                    <li key="general">Your timing distribution looks good! Keep practicing to improve consistency.</li>
+                                  );
+                                }
+                                return tips;
+                              })()}
+                            </ul>
+                          </div>
+                        )}
+                        {/* --- Statistics Section Content End --- */}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
             
-            <div className="flex items-center gap-5 bg-white border rounded-lg p-4 shadow-sm w-full max-w-lg justify-center">
+            <div className="flex items-center gap-4 bg-white border rounded-lg p-3 shadow-sm w-full max-w-lg justify-center">
               <Button
                 variant="outline"
                 size="lg"
@@ -285,7 +505,7 @@ export default function PracticePage() {
               <Button
                 onClick={isPlaying ? handlePause : handleStartPractice}
                 size="lg"
-                className={`w-32 transition-all ${isPlaying ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                className={`w-32 transition-all ${isPlaying ? 'bg-gray-600 hover:bg-gray-700' : 'bg-gray-600 hover:bg-gray-700'}`}
               >
                 {isPlaying ? (
                   <>
@@ -314,246 +534,9 @@ export default function PracticePage() {
               </Button>
             </div>
 
-            <div className="text-sm bg-gray-50 p-3 rounded-lg border shadow-sm w-full max-w-lg text-center">
-              <span className="font-semibold text-indigo-700">Current slide:</span> {formatTime(slideTimings[currentSlide - 1] || 0)} | 
-              <span className="font-semibold text-indigo-700 ml-2">Position:</span> Slide {currentSlide}/{totalSlides}
-            </div>
-            
-            {/* Stats Section */}
-            <div className="w-full max-w-lg bg-white rounded-lg border shadow-md p-4 mt-2">
-              <h3 className="text-lg font-semibold text-indigo-700 mb-3 flex items-center border-b pb-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M3 3a1 1 0 000 2h10a1 1 0 100-2H3zm0 4a1 1 0 000 2h10a1 1 0 100-2H3zm0 4a1 1 0 100 2h10a1 1 0 100-2H3z" clipRule="evenodd" />
-                </svg>
-                Presentation Statistics
-              </h3>
-              
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="bg-indigo-50 rounded-lg p-3 text-center">
-                  <p className="text-sm text-indigo-500 mb-1">Total Time</p>
-                  <p className="text-xl font-bold text-indigo-700">
-                    {formatTime(slideTimings.reduce((total, time) => total + (time || 0), 0))}
-                  </p>
-                </div>
-                
-                <div className="bg-indigo-50 rounded-lg p-3 text-center">
-                  <p className="text-sm text-indigo-500 mb-1">Average Time/Slide</p>
-                  <p className="text-xl font-bold text-indigo-700">
-                    {formatTime(Math.round(
-                      slideTimings.reduce((total, time) => total + (time || 0), 0) / 
-                      (slideTimings.filter(t => t > 0).length || 1)
-                    ))}
-                  </p>
-                </div>
-                
-                <div className="bg-indigo-50 rounded-lg p-3 text-center">
-                  <p className="text-sm text-indigo-500 mb-1">Longest Slide</p>
-                  <p className="text-xl font-bold text-indigo-700">
-                    {(() => {
-                      const maxTime = Math.max(...slideTimings.filter(t => t > 0));
-                      const maxIndex = slideTimings.findIndex(t => t === maxTime);
-                      return maxTime > 0 ? `Slide ${maxIndex + 1} (${formatTime(maxTime)})` : 'N/A';
-                    })()}
-                  </p>
-                </div>
-                
-                <div className="bg-indigo-50 rounded-lg p-3 text-center">
-                  <p className="text-sm text-indigo-500 mb-1">Shortest Slide</p>
-                  <p className="text-xl font-bold text-indigo-700">
-                    {(() => {
-                      const timedSlides = slideTimings.filter(t => t > 0);
-                      const minTime = timedSlides.length > 0 ? Math.min(...timedSlides) : 0;
-                      const minIndex = slideTimings.findIndex(t => t === minTime);
-                      return minTime > 0 ? `Slide ${minIndex + 1} (${formatTime(minTime)})` : 'N/A';
-                    })()}
-                  </p>
-                </div>
-              </div>
-              
-              {/* Time Distribution Graph */}
-              <h4 className="font-medium text-indigo-700 mb-2">Time Distribution</h4>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-500">Time spent on each slide</span>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-indigo-600 rounded-full mr-1"></div>
-                    <span className="text-xs text-gray-500">Current Slide</span>
-                  </div>
-                </div>
-                
-                {/* Line Graph */}
-                <div className="bg-white p-4 rounded-lg border border-gray-100 h-64 relative mt-2">
-                  {/* Y-axis grid lines and labels */}
-                  <div className="absolute left-0 top-0 h-full w-full">
-                    {[0, 1, 2, 3, 4].map((i) => {
-                      // Calculate max time, default to 60 seconds if no data
-                      const maxTimeValue = Math.max(...slideTimings.filter(t => t > 0), 60);
-                      // Calculate the time value for this grid line
-                      const timeValue = Math.round((4-i) * (maxTimeValue / 4));
-                      
-                      return (
-                        <div key={i} className="absolute w-full border-t border-gray-100" style={{ top: `${i * 25}%`, left: 0 }}>
-                          <span className="absolute text-xs text-gray-400" style={{ left: '0px', top: '-8px' }}>
-                            {formatTime(timeValue)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  
-                  {/* Line Chart */}
-                  <div className="absolute left-8 top-0 right-0 bottom-0 flex flex-col">
-                    <div className="flex-1 relative">
-                      <svg className="w-full h-full" viewBox={`0 0 ${Math.max(slideTimings.length * 60, 300)} 100`} preserveAspectRatio="xMidYMid meet">
-                        {/* Line */}
-                        {slideTimings.filter(t => t > 0).length > 0 && (
-                          <polyline
-                            points={slideTimings.map((time, index) => {
-                              const maxTime = Math.max(...slideTimings.filter(t => t > 0), 60);
-                              const x = (index * 60) + 30; // Center points in each segment
-                              const y = 100 - ((time || 0) / maxTime * 100);
-                              return `${x},${y}`;
-                            }).join(' ')}
-                            fill="none"
-                            stroke="#818cf8"
-                            strokeWidth="3"
-                            strokeLinejoin="round"
-                            strokeLinecap="round"
-                          />
-                        )}
-                        
-                        {/* Data Points */}
-                        {slideTimings.map((time, index) => {
-                          const maxTime = Math.max(...slideTimings.filter(t => t > 0), 60);
-                          const x = (index * 60) + 30; // Center points in each segment
-                          const y = 100 - ((time || 0) / maxTime * 100);
-                          const isCurrentSlide = currentSlide === index + 1;
-                          
-                          return (
-                            <g key={index} className="group">
-                              {/* Data Point */}
-                              <circle
-                                cx={x}
-                                cy={y}
-                                r={isCurrentSlide ? 6 : 4}
-                                fill={isCurrentSlide ? "#4f46e5" : "#818cf8"}
-                                stroke="white"
-                                strokeWidth="2"
-                              />
-                              
-                              {/* Tooltip */}
-                              <g className="opacity-0 group-hover:opacity-100">
-                                <rect
-                                  x={x - 25}
-                                  y={Math.max(5, y - 35)}
-                                  width="50"
-                                  height="20"
-                                  rx="4"
-                                  fill="#4f46e5"
-                                />
-                                <text
-                                  x={x}
-                                  y={Math.max(20, y - 21)}
-                                  textAnchor="middle"
-                                  fill="white"
-                                  fontSize="10"
-                                >
-                                  {formatTime(time || 0)}
-                                </text>
-                                <polygon
-                                  points={`${x-5},${Math.max(25, y - 15)} ${x},${Math.max(30, y - 10)} ${x+5},${Math.max(25, y - 15)}`}
-                                  fill="#4f46e5"
-                                />
-                              </g>
-                            </g>
-                          );
-                        })}
-                      </svg>
-                    </div>
-                    
-                    {/* X-axis labels */}
-                    <div className="h-8 relative border-t border-gray-200 flex">
-                      {slideTimings.length > 0 && slideTimings.map((_, index) => {
-                        // Calculate total width of SVG viewport
-                        const totalWidth = Math.max(slideTimings.length * 60, 300);
-                        // Calculate percentage position for this slide marker
-                        const percentPos = (index * 60 + 30) / totalWidth * 100;
-                        
-                        return (
-                          <div 
-                            key={index} 
-                            className="absolute flex flex-col items-center"
-                            style={{ 
-                              left: `${percentPos}%`, 
-                              transform: 'translateX(-50%)'
-                            }}
-                          >
-                            <div className="h-2 w-px bg-gray-300 mb-1"></div>
-                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs ${
-                              currentSlide === index + 1 ? 'bg-indigo-600' : 'bg-gray-400'
-                            }`}>
-                              {index + 1}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="text-center text-xs text-gray-500 mt-2">Slide Number</div>
-              </div>
-              
-              {/* Tips based on statistics */}
-              {slideTimings.filter(t => t > 0).length > 2 && (
-                <div className="mt-4 text-sm bg-blue-50 p-3 rounded-lg border border-blue-100">
-                  <h4 className="font-medium text-blue-700 mb-1">Practice Tips</h4>
-                  <ul className="list-disc pl-5 text-blue-700 space-y-1">
-                    {(() => {
-                      const tips = [];
-                      const timedSlides = slideTimings.filter(t => t > 0);
-                      const avgTime = timedSlides.reduce((total, t) => total + t, 0) / timedSlides.length;
-                      
-                      // Check for slides that took much longer than average
-                      const maxTime = Math.max(...timedSlides);
-                      const maxIndex = slideTimings.findIndex(t => t === maxTime);
-                      if (maxTime > avgTime * 1.5 && maxTime > 30) {
-                        tips.push(
-                          <li key="long">Slide {maxIndex + 1} took significantly longer than others. Consider simplifying its content.</li>
-                        );
-                      }
-                      
-                      // Check for slides that were very quick
-                      const minTime = Math.min(...timedSlides);
-                      const minIndex = slideTimings.findIndex(t => t === minTime);
-                      if (minTime < avgTime * 0.5 && maxTime > 20) {
-                        tips.push(
-                          <li key="short">Slide {minIndex + 1} was very brief. Consider adding more detail or combining with another slide.</li>
-                        );
-                      }
-                      
-                      // Check for consistency
-                      const stdDev = Math.sqrt(
-                        timedSlides.reduce((sum, time) => sum + Math.pow(time - avgTime, 2), 0) / timedSlides.length
-                      );
-                      if (stdDev > avgTime * 0.7) {
-                        tips.push(
-                          <li key="consistency">Your timing varies significantly between slides. Try to maintain more consistent pacing.</li>
-                        );
-                      }
-                      
-                      // If no specific tips, give general advice
-                      if (tips.length === 0) {
-                        tips.push(
-                          <li key="general">Your timing distribution looks good! Keep practicing to improve consistency.</li>
-                        );
-                      }
-                      
-                      return tips;
-                    })()}
-                  </ul>
-                </div>
-              )}
+            <div className="text-sm bg-gray-50 p-2 rounded-lg border shadow-sm w-full max-w-lg text-center">
+              <span className="font-semibold text-gray-700">Current slide:</span> {formatTime(slideTimings[currentSlide - 1] || 0)} | 
+              <span className="font-semibold text-gray-700 ml-2">Position:</span> Slide {currentSlide}/{totalSlides}
             </div>
           </div>
         </Card>
