@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Play, Pause, Upload } from 'lucide-react';
 import PDFViewer from '@/components/PDFViewer';
+import ReactMarkdown from 'react-markdown';
 
 export default function PracticePage() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -17,6 +18,10 @@ export default function PracticePage() {
   const [totalSlides, setTotalSlides] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const [showStats, setShowStats] = useState(false);
+  const [chatPrompt, setChatPrompt] = useState("");
+  const [chatResponse, setChatResponse] = useState<string | null>(null);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -24,11 +29,6 @@ export default function PracticePage() {
 
     if (file.type !== 'application/pdf') {
       setError('Please upload a PDF file');
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) { // 10MB limit
-      setError('File size should be less than 10MB');
       return;
     }
 
@@ -175,6 +175,33 @@ export default function PracticePage() {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleChat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pdfFile || !chatPrompt.trim()) return;
+    setChatLoading(true);
+    setChatError(null);
+    setChatResponse(null);
+
+    const formData = new FormData();
+    formData.append("prompt", chatPrompt);
+    formData.append("file", pdfFile);
+    formData.append("slideTimings", JSON.stringify(slideTimings));
+
+    try {
+      const res = await fetch("/api/gemini-chat", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Unknown error");
+      setChatResponse(data.answer);
+    } catch (err: any) {
+      setChatError(err.message);
+    } finally {
+      setChatLoading(false);
+    }
   };
 
   return (
@@ -439,47 +466,6 @@ export default function PracticePage() {
                           </div>
                           <div className="text-center text-xs text-gray-500 mt-2">Slide Number</div>
                         </div>
-                        {/* Tips based on statistics */}
-                        {slideTimings.filter(t => t > 0).length > 2 && (
-                          <div className="mt-3 text-sm bg-gray-50 p-3 rounded-lg border border-gray-200">
-                            <h4 className="font-medium text-gray-700 mb-1">Practice Tips</h4>
-                            <ul className="list-disc pl-5 text-gray-700 space-y-1">
-                              {(() => {
-                                const tips = [];
-                                const timedSlides = slideTimings.filter(t => t > 0);
-                                const avgTime = timedSlides.reduce((total, t) => total + t, 0) / timedSlides.length;
-                                const maxTime = Math.max(...timedSlides);
-                                const maxIndex = slideTimings.findIndex(t => t === maxTime);
-                                if (maxTime > avgTime * 1.5 && maxTime > 30) {
-                                  tips.push(
-                                    <li key="long">Slide {maxIndex + 1} took significantly longer than others. Consider simplifying its content.</li>
-                                  );
-                                }
-                                const minTime = Math.min(...timedSlides);
-                                const minIndex = slideTimings.findIndex(t => t === minTime);
-                                if (minTime < avgTime * 0.5 && maxTime > 20) {
-                                  tips.push(
-                                    <li key="short">Slide {minIndex + 1} was very brief. Consider adding more detail or combining with another slide.</li>
-                                  );
-                                }
-                                const stdDev = Math.sqrt(
-                                  timedSlides.reduce((sum, time) => sum + Math.pow(time - avgTime, 2), 0) / timedSlides.length
-                                );
-                                if (stdDev > avgTime * 0.7) {
-                                  tips.push(
-                                    <li key="consistency">Your timing varies significantly between slides. Try to maintain more consistent pacing.</li>
-                                  );
-                                }
-                                if (tips.length === 0) {
-                                  tips.push(
-                                    <li key="general">Your timing distribution looks good! Keep practicing to improve consistency.</li>
-                                  );
-                                }
-                                return tips;
-                              })()}
-                            </ul>
-                          </div>
-                        )}
                         {/* --- Statistics Section Content End --- */}
                       </div>
                     </div>
@@ -540,6 +526,27 @@ export default function PracticePage() {
             </div>
           </div>
         </Card>
+      )}
+      {pdfFile && (
+        <div className="mt-8">
+          <form onSubmit={handleChat} className="flex gap-2">
+            <Input
+              value={chatPrompt}
+              onChange={e => setChatPrompt(e.target.value)}
+              placeholder="Ask about your presentation..."
+              disabled={chatLoading}
+            />
+            <Button type="submit" disabled={chatLoading || !chatPrompt.trim()}>
+              {chatLoading ? "Thinking..." : "Ask"}
+            </Button>
+          </form>
+          {chatError && <div className="text-red-600 mt-2">{chatError}</div>}
+          {chatResponse && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg prose max-w-none">
+              <ReactMarkdown>{chatResponse}</ReactMarkdown>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
