@@ -1,9 +1,11 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
+html, body {
+  font-family: 'Montserrat', sans-serif;
 }
 
 @layer utilities {
@@ -83,4 +85,32 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Presentation Practice Counter */
+.practice-counter {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-radius: 9999px;
+  padding: 0.2em 0.9em;
+  display: inline-block;
+  font-size: 1rem;
+  text-align: center;
+  min-height: 1em;
+  margin-top: 1rem;
+  box-shadow: none;
+  transition: background 0.3s;
+}
+
+.practice-counter span, .practice-counter .count {
+  color: inherit;
+}
+
+.practice-counter .count {
+  @apply text-blue-600 font-bold;
+  transition: color 0.3s ease;
+}
+
+.practice-counter:hover .count {
+  @apply text-blue-700;
 }

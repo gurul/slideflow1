@@ -39,22 +39,22 @@ export default function Home() {
   return (
     <div className={styles.container}>
       <div className={styles.content}>
-        <h1 className={styles.title}>Welcome to SlideFlow</h1>
+        <div className="practice-counter" style={{ marginBottom: '0.5rem' }}>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="live-indicator" style={{ display: 'inline-block', width: '0.5em', height: '0.5em', backgroundColor: '#22c55e', borderRadius: '50%', marginRight: '0.4em', verticalAlign: 'middle' }}></span>
+            <span className="count" style={{ color: '#fff', marginRight: '0.5em' }}>{displayedClicks}</span>
+            Presentations Practiced
+          </span>
+        </div>
+        <h1 className={styles.title}>slideflow</h1>
         <p className={styles.subtitle}>
           Practice your presentations with real-time timing feedback
         </p>
         <Link href="/practice">
-          <Button size="lg" className={styles.button} onClick={handleClick}>
+          <Button size="lg" className="bg-white text-black border border-gray-300 hover:bg-gray-100 hover:text-black transition-all" onClick={handleClick}>
             Start Practicing
           </Button>
         </Link>
-        <div className="mt-4 text-center text-lg font-semibold">
-          {displayedClicks > 0 && (
-            <span>
-              <span className="text-blue-600">{displayedClicks}</span> Presentations Practiced
-            </span>
-          )}
-        </div>
         {/*
         <div className="mt-8">
           <GeminiChat />

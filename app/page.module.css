@@ -1,5 +1,5 @@
 .container {
-  background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
+  background: linear-gradient(135deg, #000000 0%, #000000 100%);
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -15,16 +15,12 @@
 .title {
   font-size: 3.5rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-bottom: 1.5rem;
-  line-height: 1.2;
+  color: #ffffff
 }
 
 .subtitle {
   font-size: 1.5rem;
-  color: #4a5568;
+  color: #c5c6c8;
   margin-bottom: 2.5rem;
   line-height: 1.6;
 }
@@ -35,30 +31,24 @@
 
 .button:hover {
   transform: translateY(-2px);
-}
-
-/* Animation for the title */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.title {
-  animation: fadeIn 0.8s ease-out forwards;
-}
-
-.subtitle {
-  animation: fadeIn 0.8s ease-out 0.2s forwards;
-  opacity: 0;
-}
-
-.button {
-  animation: fadeIn 0.8s ease-out 0.4s forwards;
-  opacity: 0;
 } 
+
+/* Presentation Practice Counter */
+.practice-counter {
+  color: #c5c6c8;
+  min-height: 1.5em;
+  transition: all 0.3s ease;
+}
+
+.practice-counter span {
+  @apply inline-block;
+}
+
+.practice-counter .count {
+  @apply text-blue-600 font-bold;
+  transition: color 0.3s ease;
+}
+
+.practice-counter:hover .count {
+  @apply text-blue-700;
+}

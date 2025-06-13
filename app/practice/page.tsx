@@ -213,7 +213,7 @@ export default function PracticePage() {
       <Card className="p-4 mb-4 shadow-md bg-white border-gray-200">
         <div className="flex items-center gap-4">
           <Label htmlFor="pdf-upload" className="cursor-pointer">
-            <Button variant="outline" size="lg" asChild className="border-gray-300 hover:bg-gray-50 hover:text-gray-900 transition-all">
+            <Button variant="outline" size="lg" asChild className="border-black bg-black text-white hover:bg-gray-900 hover:text-white transition-all">
               <div>
                 <Upload className="mr-2 h-5 w-5" />
                 Upload Presentation PDF
@@ -275,6 +275,8 @@ export default function PracticePage() {
                           ? 'bg-gray-50 border-gray-300 shadow-sm' 
                           : 'hover:bg-gray-50'
                       }`}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => setCurrentSlide(i + 1)}
                     >
                       <span className={`font-medium ${currentSlide === i + 1 ? 'text-gray-700' : ''}`}>
                         Slide {i + 1}
@@ -290,7 +292,7 @@ export default function PracticePage() {
                   ))}
                 </div>
                 <Button
-                  className="mt-4"
+                  className="mt-4 bg-black text-white border border-black hover:bg-gray-900 hover:text-white transition-all"
                   variant="outline"
                   onClick={() => setShowStats((prev) => !prev)}
                 >
@@ -535,8 +537,9 @@ export default function PracticePage() {
               onChange={e => setChatPrompt(e.target.value)}
               placeholder="Ask about your presentation..."
               disabled={chatLoading}
+              className="bg-white text-black border border-gray-300 focus:border-gray-400 focus:ring-0"
             />
-            <Button type="submit" disabled={chatLoading || !chatPrompt.trim()}>
+            <Button type="submit" disabled={chatLoading || !chatPrompt.trim()} className="bg-black text-white border border-black hover:bg-gray-900 hover:text-white transition-all">
               {chatLoading ? "Thinking..." : "Ask"}
             </Button>
           </form>
