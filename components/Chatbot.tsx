@@ -89,7 +89,11 @@ I can help you improve your presentation timing, provide feedback on your pace, 
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 413) {
+          throw new Error('The PDF file is too large. Please use a smaller file or compress it.');
+        }
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
@@ -112,7 +116,7 @@ I can help you improve your presentation timing, provide feedback on your pace, 
       // Add error message to chat
       const errorMessage: Message = {
         role: 'model',
-        parts: [{ text: 'Sorry, I encountered an error. Please try again.' }],
+        parts: [{ text: error instanceof Error ? error.message : 'Sorry, I encountered an error. Please try again.' }],
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
