@@ -33,6 +33,11 @@ export async function POST(req: NextRequest) {
     const response = await result.response;
     const text = response.text();
 
+    // Ensure we have a valid response
+    if (!text) {
+      throw new Error('No response from Gemini API');
+    }
+
     return NextResponse.json({ 
       response: text,
       success: true 
@@ -56,8 +61,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Handle any other errors
     return NextResponse.json(
-      { error: 'Failed to generate response', success: false },
+      { error: error.message || 'Failed to generate response', success: false },
       { status: 500 }
     );
   }

@@ -83,25 +83,38 @@ I can help you improve your presentation timing, provide feedback on your pace, 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: input,
-          history: messages,
           context: context,
           pdfBase64: pdfBase64,
         }),
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
 
-      if (data.success) {
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid response format from server');
+      }
+
+      if (data.success && data.response) {
         const assistantMessage: Message = {
           role: 'model',
           parts: [{ text: data.response }],
         };
         setMessages(prev => [...prev, assistantMessage]);
       } else {
-        console.error('Chat error:', data.error);
+        throw new Error(data.error || 'Failed to get response from Flo');
       }
     } catch (error) {
       console.error('Request failed:', error);
+      // Add error message to chat
+      const errorMessage: Message = {
+        role: 'model',
+        parts: [{ text: 'Sorry, I encountered an error. Please try again.' }],
+      };
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
