@@ -2,8 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'SlideFlow - Practice Your Presentations',
-  description: 'Enhance your presentation delivery with SlideFlow',
+  title: 'slideflow',
 }
 
 export default function RootLayout({

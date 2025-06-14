@@ -65,10 +65,58 @@ module.exports = {
   				from: { height: "var(--radix-accordion-content-height)" },
   				to: { height: 0 },
   			},
+        "smoothLiquidWave": {
+          "0%": {
+            transform: "translateY(0) scaleY(1)",
+            opacity: 1
+          },
+          "15%": {
+            transform: "translateY(-15px) scaleY(0.7)",
+            opacity: 1
+          },
+          "30%": {
+            transform: "translateY(-30px) scaleY(0.4)",
+            opacity: 1
+          },
+          "45%": {
+            transform: "translateY(-50px) scaleY(0.2)",
+            opacity: 1
+          },
+          "60%": {
+            transform: "translateY(-70px) scaleY(0.1)",
+            opacity: 1
+          },
+          "75%": {
+            transform: "translateY(-50px) scaleY(0.2)",
+            opacity: 1
+          },
+          "85%": {
+            transform: "translateY(-30px) scaleY(0.4)",
+            opacity: 1
+          },
+          "100%": {
+            transform: "translateY(0) scaleY(1)",
+            opacity: 1
+          }
+        },
+        "neonGlow": {
+          "0%, 100%": {
+            transform: "scaleY(0.6)",
+            boxShadow: "0 0 15px rgba(255, 255, 255, 0.4)",
+            backgroundPosition: "0% 50%"
+          },
+          "50%": {
+            transform: "scaleY(2)",
+            boxShadow: "0 0 50px rgba(255, 255, 255, 1)",
+            backgroundPosition: "100% 50%"
+          }
+        }
   		},
   		animation: {
   			"accordion-down": "accordion-down 0.2s ease-out",
   			"accordion-up": "accordion-up 0.2s ease-out",
+        "smoothLiquidWave": "smoothLiquidWave 3s cubic-bezier(0.25, 0.1, 0.25, 1) infinite",
+        "neonGlow": "neonGlow 3s ease-in-out infinite"
   		},
   	}
   },

@@ -109,8 +109,23 @@ html, body {
 .practice-counter .count {
   @apply text-blue-600 font-bold;
   transition: color 0.3s ease;
+  margin-right: 0.3em;
 }
 
 .practice-counter:hover .count {
   @apply text-blue-700;
+}
+
+.live-indicator {
+  animation: pulse-glow 1.2s infinite;
+  box-shadow: 0 0 0 0 #22c55e80;
+}
+
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 0 0 0 #22c55e80;
+  }
+  100% {
+    box-shadow: 0 0 0 8px #22c55e00;
+  }
 }
