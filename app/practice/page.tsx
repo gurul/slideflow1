@@ -209,7 +209,7 @@ export default function PracticePage() {
   const graphHeight = 224; // px (h-56)
   const pointMargin = 30; // px
   const leftMargin = 60; // px (increased for more space before first slide)
-  const rightMargin = 60; // px (more space for tooltip)
+  const rightMargin = 130; // px (increased by 20px for more space after last slide)
   const pointSpacing = slideTimings.length > 1 ? (Math.max(600, leftMargin + rightMargin + (slideTimings.length - 1) * 60) - leftMargin - rightMargin) / (slideTimings.length - 1) : 0;
   const graphWidth = leftMargin + rightMargin + (slideTimings.length - 1) * pointSpacing;
   const graphMargin = 20; // px
@@ -574,7 +574,7 @@ export default function PracticePage() {
 
         {/* Chatbot will only show up after presentation is uploaded */}
         <Chatbot 
-          isVisible={hasUploadedPresentation} 
+          isVisible={false} 
           currentSlide={currentSlide}
           totalSlides={totalSlides}
           slideTimings={slideTimings}
