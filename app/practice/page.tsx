@@ -574,7 +574,7 @@ export default function PracticePage() {
 
         {/* Chatbot will only show up after presentation is uploaded */}
         <Chatbot 
-          isVisible={false} 
+          isVisible={hasUploadedPresentation} 
           currentSlide={currentSlide}
           totalSlides={totalSlides}
           slideTimings={slideTimings}

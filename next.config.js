@@ -6,12 +6,7 @@ const nextConfig = {
     
     return config;
   },
-  // Increase the API route body size limit
-  api: {
-    bodyParser: {
-      sizeLimit: '4mb',
-    },
-  },
+  // Remove the API route body size limit
 }
 
 module.exports = nextConfig 

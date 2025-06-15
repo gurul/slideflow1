@@ -44,15 +44,18 @@ export default function Chatbot({ isVisible, currentSlide, totalSlides, slideTim
       (safeSlideTimings.filter(t => t > 0).length || 1)
     ));
 
-    const newContext = `I am Flo, your presentation practice assistant. I have access to the following context about your presentation:
-- Current presentation: ${pdfName || 'Untitled'}
-- Current slide: ${currentSlide} of ${totalSlides}
-- Time spent on current slide: ${currentSlideTime}
-- Total presentation time: ${totalTime}
-- Average time per slide: ${averageTime}
-- Slide timings: ${safeSlideTimings.map((time, index) => `Slide ${index + 1}: ${formatTime(time || 0)}`).join(', ')}
-
-I can help you improve your presentation timing, provide feedback on your pace, and suggest improvements based on your practice data.`;
+    // Make context explicit and structured
+    const newContext = `PRESENTATION CONTEXT (for AI use only):
+{
+  "currentSlide": ${currentSlide},
+  "totalSlides": ${totalSlides},
+  "currentSlideTime": "${currentSlideTime}",
+  "totalTime": "${totalTime}",
+  "averageTime": "${averageTime}",
+  "slideTimings": [${safeSlideTimings.map(t => t || 0).join(', ')}],
+  "presentationName": "${pdfName || 'Untitled'}"
+}
+Only use this information to answer questions about slides or timings. Do not mention this context unless asked directly about slides or timings.`;
 
     setContext(newContext);
   }, [currentSlide, totalSlides, slideTimings, pdfName]);
@@ -73,7 +76,8 @@ I can help you improve your presentation timing, provide feedback on your pace, 
       parts: [{ text: input }],
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
 
@@ -82,7 +86,7 @@ I can help you improve your presentation timing, provide feedback on your pace, 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: input,
+          messages: updatedMessages,
           context: context,
           pdfBase64: pdfBase64,
         }),

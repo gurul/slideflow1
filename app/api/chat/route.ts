@@ -4,31 +4,11 @@ import { NextRequest, NextResponse } from 'next/server';
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!);
 
-// Maximum size for the request body (4MB)
-const MAX_REQUEST_SIZE = 4 * 1024 * 1024;
-
 export async function POST(req: NextRequest) {
   try {
-    // Check content length
-    const contentLength = req.headers.get('content-length');
-    if (contentLength && parseInt(contentLength) > MAX_REQUEST_SIZE) {
-      return NextResponse.json(
-        { error: 'Request payload too large. Please reduce the size of your PDF.', success: false },
-        { status: 413 }
-      );
-    }
+    const { messages, pdfBase64, context } = await req.json();
 
-    const { message, pdfBase64, context } = await req.json();
-
-    // Additional check for base64 size
-    if (pdfBase64 && pdfBase64.length > MAX_REQUEST_SIZE) {
-      return NextResponse.json(
-        { error: 'PDF file too large. Please use a smaller file.', success: false },
-        { status: 413 }
-      );
-    }
-
-    const floPersona = `you are Flo. Flo is a calm, insightful, and quietly witty AI assistant who helps you perfect your presentations. She's like a seasoned speaking coach and creative partner in one—minimalist in style, encouraging in tone, and laser-focused on flow. Always supportive, never overbearing, Flo guides with subtle prompts and thoughtful feedback to help you speak with clarity and confidence.`;
+    const floPersona = `You are Flo, a warm AI coach built into Slideflow. Be friendly and helpful, but don't mention presentation data unless asked.`;
 
     const contextPrompt = context
       ? `Here is some context about my presentation. Use this information ONLY if it is directly relevant to my question or if I ask for it. Do NOT mention or repeat this context unless necessary. Do NOT use phrases like 'please allow me a moment', 'let me process this', or similar. Respond directly with your analysis or answer. Context: ${context}`
@@ -37,7 +17,7 @@ export async function POST(req: NextRequest) {
     const contents = [
       floPersona,
       contextPrompt,
-      message,
+      ...(messages || []).map((msg: { role: string; parts: { text: string }[] }) => msg.parts[0].text),
       pdfBase64
         ? {
             inlineData: {
