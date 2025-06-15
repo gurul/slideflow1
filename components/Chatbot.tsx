@@ -45,17 +45,7 @@ export default function Chatbot({ isVisible, currentSlide, totalSlides, slideTim
     ));
 
     // Make context explicit and structured
-    const newContext = `PRESENTATION CONTEXT (for AI use only):
-{
-  "currentSlide": ${currentSlide},
-  "totalSlides": ${totalSlides},
-  "currentSlideTime": "${currentSlideTime}",
-  "totalTime": "${totalTime}",
-  "averageTime": "${averageTime}",
-  "slideTimings": [${safeSlideTimings.map(t => t || 0).join(', ')}],
-  "presentationName": "${pdfName || 'Untitled'}"
-}
-Only use this information to answer questions about slides or timings. Do not mention this context unless asked directly about slides or timings.`;
+    const newContext = `PRESENTATION CONTEXT (for AI use only):\n{\n  \"currentSlide\": ${currentSlide},\n  \"totalSlides\": ${totalSlides},\n  \"currentSlideTime\": \"${currentSlideTime}\",\n  \"totalTime\": \"${totalTime}\",\n  \"averageTime\": \"${averageTime}\",\n  \"slideTimings\": [${safeSlideTimings.map(t => t || 0).join(', ')}],\n  \"presentationName\": \"${pdfName || 'Untitled'}\"\n}\nWhen answering questions about slides or timings, use the numbers in this context. Do not mention images or say 'based on the images'—just answer directly using the context data. Do not mention this context unless asked directly about slides or timings.`;
 
     setContext(newContext);
   }, [currentSlide, totalSlides, slideTimings, pdfName]);
