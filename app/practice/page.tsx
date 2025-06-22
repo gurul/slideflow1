@@ -9,6 +9,7 @@ import { Play, Pause, Upload, Timer } from 'lucide-react';
 import PDFViewer from '@/components/PDFViewer';
 import ReactMarkdown from 'react-markdown';
 import Chatbot from '@/components/Chatbot';
+import { compressPDFToBase64, isFileTooLarge, getFileSizeInMB, compressPDFWithFallback } from '@/lib/pdfCompression';
 
 export default function PracticePage() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -22,7 +23,7 @@ export default function PracticePage() {
   const [hasUploadedPresentation, setHasUploadedPresentation] = useState(false);
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -31,30 +32,63 @@ export default function PracticePage() {
       return;
     }
 
-    setError(null);
-    setPdfFile(file);
-    setSlideTimings([]);
-    setCurrentSlide(1);
-    setHasUploadedPresentation(true);
+    // Check file size and compress if necessary
+    const originalSizeMB = getFileSizeInMB(file);
+    console.log(`Original file size: ${originalSizeMB.toFixed(2)} MB`);
 
-    // Read PDF as base64 and store in state, also send to Gemini
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const base64 = (event.target?.result as string).split(',')[1]; // Remove data:...;base64,
-      setPdfBase64(base64);
+    try {
+      setError(null);
+      setPdfFile(file);
+      setSlideTimings([]);
+      setCurrentSlide(1);
+      setHasUploadedPresentation(true);
+
+      // Use enhanced compression with fallback
+      const compressedBlob = await compressPDFWithFallback(file);
+      const compressedSizeMB = compressedBlob.size / (1024 * 1024);
+      console.log(`Compressed file size: ${compressedSizeMB.toFixed(2)} MB`);
+
+      // Convert compressed blob to base64
+      const compressedBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          const base64 = result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = () => reject(new Error('Failed to convert compressed PDF to base64'));
+        reader.readAsDataURL(compressedBlob);
+      });
+
+      setPdfBase64(compressedBase64);
+
+      // Send compressed PDF to Gemini for analysis
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: "Analyze this presentation PDF for clarity, flow, and errors.",
-          pdfBase64: base64,
+          pdfBase64: compressedBase64,
         }),
       });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        if (res.status === 413) {
+          throw new Error('The PDF file is still too large after compression. Please try a smaller file.');
+        }
+        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+      }
+
       const data = await res.json();
-      // You can now display data.response in your UI, or add it to the chatbot history
       console.log(data.response);
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error processing PDF:', error);
+      setError(error instanceof Error ? error.message : 'Failed to process PDF file');
+      setPdfFile(null);
+      setPdfBase64(null);
+      setHasUploadedPresentation(false);
+    }
   };
   
   const handleTotalPages = (total: number) => {

@@ -11,17 +11,38 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { CloudIcon, Loader2Icon } from "lucide-react"
+import { compressPDFToBase64, getFileSizeInMB, compressPDFWithFallback } from "@/lib/pdfCompression"
 
 export function UploadModal({isOpen, setIsOpen, uploadAndConvertPDF}) {
   const [isUploading, setIsUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
+  const [uploadStatus, setUploadStatus] = useState("")
 
-  const handleFile = useCallback((file) => {
+  const handleFile = useCallback(async (file) => {
     console.log("File name:", file.name)
+    console.log(`Original file size: ${getFileSizeInMB(file).toFixed(2)} MB`)
+    
     setIsUploading(true)
-    // Simulating upload process
-    uploadAndConvertPDF(file)
-  }, [])
+    setUploadStatus("Compressing PDF...")
+    
+    try {
+      // Use enhanced compression with fallback
+      const compressedBlob = await compressPDFWithFallback(file);
+      setUploadStatus("Uploading compressed PDF...")
+      
+      // Create a compressed file object for the upload function
+      const compressedFile = new File([compressedBlob], file.name, { type: 'application/pdf' });
+      
+      console.log(`Compressed file size: ${getFileSizeInMB(compressedFile).toFixed(2)} MB`)
+      
+      // Call the upload function with the compressed file
+      await uploadAndConvertPDF(compressedFile);
+    } catch (error) {
+      console.error('Error compressing/uploading PDF:', error);
+      setUploadStatus("Error: " + (error.message || 'Failed to process PDF'));
+      setIsUploading(false);
+    }
+  }, [uploadAndConvertPDF])
 
   const handleDrag = useCallback((e) => {
     e.preventDefault()
@@ -92,6 +113,9 @@ export function UploadModal({isOpen, setIsOpen, uploadAndConvertPDF}) {
               <>
                 <Loader2Icon className="h-12 w-12 animate-spin" />
                 <p className="mt-4 text-lg font-semibold">Uploading...</p>
+                {uploadStatus && (
+                  <p className="mt-2 text-sm opacity-80">{uploadStatus}</p>
+                )}
               </>
             ) : (
               <>
@@ -112,7 +136,7 @@ export function UploadModal({isOpen, setIsOpen, uploadAndConvertPDF}) {
                   </label>
                   <p className="pl-1">or drag and drop</p>
                 </div>
-                <p className="text-xs leading-5 text-gray-600">PDF up to 10MB</p>
+                <p className="text-xs leading-5 text-gray-600">PDF up to 10MB (will be compressed automatically)</p>
               </>
             )}
           </div>
