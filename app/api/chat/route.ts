@@ -4,8 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!);
 
-// Maximum file size in bytes (10MB)
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+// Maximum file size in bytes (4MB)
+const MAX_FILE_SIZE = 4 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
       if (estimatedBinarySize > MAX_FILE_SIZE) {
         return NextResponse.json(
           { 
-            error: 'The PDF file is too large. Please use a smaller file or compress it further.',
+            error: 'The PDF file is too large. Please compress it to under 4MB.',
             success: false 
           },
           { status: 413 }
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     // Handle file size errors from Gemini
     if (error.message?.includes('file too large') || error.message?.includes('size limit')) {
       return NextResponse.json(
-        { error: 'The PDF file is too large for processing. Please compress it further or use a smaller file.', success: false },
+        { error: 'The PDF file is too large for processing. Please compress it to under 4MB.', success: false },
         { status: 413 }
       );
     }

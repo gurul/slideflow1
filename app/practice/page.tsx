@@ -9,7 +9,7 @@ import { Play, Pause, Upload, Timer } from 'lucide-react';
 import PDFViewer from '@/components/PDFViewer';
 import ReactMarkdown from 'react-markdown';
 import Chatbot from '@/components/Chatbot';
-import { compressPDFToBase64, isFileTooLarge, getFileSizeInMB, compressPDFWithFallback } from '@/lib/pdfCompression';
+import { compressPDFToBase64, isFileTooLarge, getFileSizeInMB, compressPDFWithFallback, compressPDFToTargetSize } from '@/lib/pdfCompression';
 
 export default function PracticePage() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -43,10 +43,15 @@ export default function PracticePage() {
       setCurrentSlide(1);
       setHasUploadedPresentation(true);
 
-      // Use enhanced compression with fallback
-      const compressedBlob = await compressPDFWithFallback(file);
+      // Use target size compression to ensure file is under 4MB
+      const compressedBlob = await compressPDFToTargetSize(file);
       const compressedSizeMB = compressedBlob.size / (1024 * 1024);
       console.log(`Compressed file size: ${compressedSizeMB.toFixed(2)} MB`);
+
+      // Check if compression was successful
+      if (compressedSizeMB > 4) {
+        throw new Error(`File could not be compressed to under 4MB. Current size: ${compressedSizeMB.toFixed(2)} MB. Please try a smaller file.`);
+      }
 
       // Convert compressed blob to base64
       const compressedBase64 = await new Promise<string>((resolve, reject) => {

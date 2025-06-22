@@ -11,7 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { CloudIcon, Loader2Icon } from "lucide-react"
-import { compressPDFToBase64, getFileSizeInMB, compressPDFWithFallback } from "@/lib/pdfCompression"
+import { compressPDFToBase64, getFileSizeInMB, compressPDFWithFallback, compressPDFToTargetSize } from "@/lib/pdfCompression"
 
 export function UploadModal({isOpen, setIsOpen, uploadAndConvertPDF}) {
   const [isUploading, setIsUploading] = useState(false)
@@ -23,17 +23,23 @@ export function UploadModal({isOpen, setIsOpen, uploadAndConvertPDF}) {
     console.log(`Original file size: ${getFileSizeInMB(file).toFixed(2)} MB`)
     
     setIsUploading(true)
-    setUploadStatus("Compressing PDF...")
+    setUploadStatus("Compressing PDF to under 4MB...")
     
     try {
-      // Use enhanced compression with fallback
-      const compressedBlob = await compressPDFWithFallback(file);
+      // Use target size compression to ensure file is under 4MB
+      const compressedBlob = await compressPDFToTargetSize(file);
+      const compressedSizeMB = compressedBlob.size / (1024 * 1024);
+      
+      if (compressedSizeMB > 4) {
+        throw new Error(`File could not be compressed to under 4MB. Current size: ${compressedSizeMB.toFixed(2)} MB. Please try a smaller file.`);
+      }
+      
       setUploadStatus("Uploading compressed PDF...")
       
       // Create a compressed file object for the upload function
       const compressedFile = new File([compressedBlob], file.name, { type: 'application/pdf' });
       
-      console.log(`Compressed file size: ${getFileSizeInMB(compressedFile).toFixed(2)} MB`)
+      console.log(`Compressed file size: ${compressedSizeMB.toFixed(2)} MB`)
       
       // Call the upload function with the compressed file
       await uploadAndConvertPDF(compressedFile);
@@ -136,7 +142,7 @@ export function UploadModal({isOpen, setIsOpen, uploadAndConvertPDF}) {
                   </label>
                   <p className="pl-1">or drag and drop</p>
                 </div>
-                <p className="text-xs leading-5 text-gray-600">PDF up to 10MB (will be compressed automatically)</p>
+                <p className="text-xs leading-5 text-gray-600">PDF up to 4MB (will be compressed automatically)</p>
               </>
             )}
           </div>
