@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Play, Pause, Upload, Timer } from 'lucide-react';
 import PDFViewer from '@/components/PDFViewer';
-import ReactMarkdown from 'react-markdown';
 import Chatbot from '@/components/Chatbot';
+import TranscriptDisplay from '@/components/TranscriptDisplay';
+import { useAudioTranscription } from '@/lib/useAudioTranscription';
 
 export default function PracticePage() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -21,6 +22,21 @@ export default function PracticePage() {
   const [showStats, setShowStats] = useState(false);
   const [hasUploadedPresentation, setHasUploadedPresentation] = useState(false);
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
+  const [maxReachedSlide, setMaxReachedSlide] = useState(0);
+
+  // Audio transcription hook
+  const {
+    isRecording,
+    isTranscribing,
+    transcripts,
+    recordingSlideNumber,
+    startRecording,
+    stopRecording,
+    clearTranscripts,
+    getFormattedTranscript
+  } = useAudioTranscription({
+    onError: (error) => setError(error)
+  });
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -43,7 +59,9 @@ export default function PracticePage() {
       setPdfFile(file);
       setSlideTimings([]);
       setCurrentSlide(1);
+      setMaxReachedSlide(1);
       setHasUploadedPresentation(true);
+      clearTranscripts(); // Clear any previous transcripts
 
       // Convert file to base64
       const base64 = await new Promise<string>((resolve, reject) => {
@@ -107,12 +125,19 @@ export default function PracticePage() {
       timerRef.current = null;
     }
     
-    setIsPlaying(true);
-    
-    // Reset elapsed time counter for the current slide
+    // Reset context and start from Slide 1
+    setCurrentSlide(1);
+    setMaxReachedSlide(1);
+    clearTranscripts();
+    setSlideTimings([]);
     elapsedTimeRef.current = 0;
     
-    // Start timer for current slide with a slight delay to avoid double counting
+    setIsPlaying(true);
+    
+    // Start recording for Slide 1
+    startRecording(1);
+    
+    // Start timer for Slide 1
     setTimeout(() => {
       timerRef.current = createTimer();
     }, 0);
@@ -123,52 +148,37 @@ export default function PracticePage() {
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
+    
+    // Stop recording when paused
+    stopRecording();
   };
 
-  const handleNextSlide = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
+  const handleNextSlide = async () => {
+    if (isPlaying) {
+      await stopRecording(); // Wait for transcript to be saved
     }
     
-    // Reset elapsed time counter
-    elapsedTimeRef.current = 0;
+    const nextSlide = Math.min(totalSlides, currentSlide + 1);
     
-    // Move to the next slide
-    setCurrentSlide(prev => Math.min(totalSlides, prev + 1));
-    
-    // If the timer is playing, restart it for the new slide after state has updated
+    setMaxReachedSlide(prev => Math.max(nextSlide, prev));
+    setCurrentSlide(nextSlide);
+
     if (isPlaying) {
-      setTimeout(() => {
-        // Double-check timer is still null to avoid any race conditions
-        if (timerRef.current === null) {
-          timerRef.current = createTimer();
-        }
-      }, 0);
+      startRecording(nextSlide);
     }
   };
 
-  const handlePreviousSlide = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    
-    // Reset elapsed time counter
-    elapsedTimeRef.current = 0;
-    
-    // Move to the previous slide
-    setCurrentSlide(prev => Math.max(1, prev - 1));
-    
-    // If the timer is playing, restart it for the new slide after state has updated
+  const handlePreviousSlide = async () => {
     if (isPlaying) {
-      setTimeout(() => {
-        // Double-check timer is still null to avoid any race conditions
-        if (timerRef.current === null) {
-          timerRef.current = createTimer();
-        }
-      }, 0);
+      await stopRecording(); // Finalize transcript for the current slide
+      setIsPlaying(false); // Pause the practice session
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
     }
+    
+    const previousSlide = Math.max(1, currentSlide - 1);
+    setCurrentSlide(previousSlide);
   };
   
   // Helper function to create a timer with better performance
@@ -562,6 +572,18 @@ export default function PracticePage() {
                 </div>
               </div>
               
+              {/* Transcript Display */}
+              <TranscriptDisplay
+                transcripts={transcripts}
+                currentSlide={currentSlide}
+                maxReachedSlide={maxReachedSlide}
+                isRecording={isRecording}
+                isTranscribing={isTranscribing}
+                recordingSlideNumber={recordingSlideNumber}
+                onClearTranscripts={clearTranscripts}
+                className="w-full max-w-4xl"
+              />
+              
               <div className="flex items-center gap-4 bg-white border rounded-lg p-3 shadow-sm w-full max-w-lg justify-center">
                 <Button
                   variant="outline"
@@ -624,6 +646,7 @@ export default function PracticePage() {
           slideTimings={slideTimings}
           pdfName={pdfFile?.name}
           pdfBase64={pdfBase64}
+          transcripts={transcripts}
         />
       </div>
     </div>

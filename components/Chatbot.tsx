@@ -10,6 +10,12 @@ interface Message {
   parts: { text: string }[];
 }
 
+interface TranscriptEntry {
+  slideNumber: number;
+  text: string;
+  timestamp: Date;
+}
+
 interface ChatbotProps {
   isVisible: boolean;
   currentSlide: number;
@@ -17,9 +23,18 @@ interface ChatbotProps {
   slideTimings: number[];
   pdfName?: string;
   pdfBase64?: string | null;
+  transcripts?: TranscriptEntry[];
 }
 
-export default function Chatbot({ isVisible, currentSlide, totalSlides, slideTimings = [], pdfName, pdfBase64 }: ChatbotProps) {
+export default function Chatbot({ 
+  isVisible, 
+  currentSlide, 
+  totalSlides, 
+  slideTimings = [], 
+  pdfName, 
+  pdfBase64,
+  transcripts = []
+}: ChatbotProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -38,7 +53,7 @@ export default function Chatbot({ isVisible, currentSlide, totalSlides, slideTim
     }
   }, [isOpen]);
 
-  // Update context whenever presentation details change
+  // Update context whenever presentation details or transcripts change
   useEffect(() => {
     const formatTime = (seconds: number) => {
       const mins = Math.floor(seconds / 60);
@@ -55,11 +70,25 @@ export default function Chatbot({ isVisible, currentSlide, totalSlides, slideTim
       (safeSlideTimings.filter(t => t > 0).length || 1)
     ));
 
+    // Format transcript data for context
+    const transcriptContext = transcripts.length > 0 
+      ? `\n\nTRANSCRIPT CONTEXT:\nYou are helping the user practice a presentation. Here is what they said:\n${Object.entries(transcripts
+          .reduce((acc, entry) => {
+            if (!acc[entry.slideNumber]) {
+              acc[entry.slideNumber] = [];
+            }
+            acc[entry.slideNumber].push(entry.text);
+            return acc;
+          }, {} as Record<number, string[]>))
+          .map(([slideNum, texts]) => `Slide ${slideNum}:\n"${texts.join(' ')}"`)
+          .join('\n\n')}`
+      : '';
+
     // Make context explicit and structured
-    const newContext = `PRESENTATION CONTEXT (for AI use only):\n{\n  \"currentSlide\": ${currentSlide},\n  \"totalSlides\": ${totalSlides},\n  \"currentSlideTime\": \"${currentSlideTime}\",\n  \"totalTime\": \"${totalTime}\",\n  \"averageTime\": \"${averageTime}\",\n  \"slideTimings\": [${safeSlideTimings.map(t => t || 0).join(', ')}],\n  \"presentationName\": \"${pdfName || 'Untitled'}\"\n}\nWhen answering questions about slides or timings, use the numbers in this context. Do not mention images or say 'based on the images'—just answer directly using the context data. Do not mention this context unless asked directly about slides or timings.`;
+    const newContext = `PRESENTATION CONTEXT (for AI use only):\n{\n  "currentSlide": ${currentSlide},\n  "totalSlides": ${totalSlides},\n  "currentSlideTime": "${currentSlideTime}",\n  "totalTime": "${totalTime}",\n  "averageTime": "${averageTime}",\n  "slideTimings": [${safeSlideTimings.map(t => t || 0).join(', ')}],\n  "presentationName": "${pdfName || 'Untitled'}"\n}${transcriptContext}\nWhen answering questions about slides, timings, or what the user said, use the numbers and transcript in this context. Do not mention images or say 'based on the images'—just answer directly using the context data. Do not mention this context unless asked directly about slides, timings, or transcript content.`;
 
     setContext(newContext);
-  }, [currentSlide, totalSlides, slideTimings, pdfName]);
+  }, [currentSlide, totalSlides, slideTimings, pdfName, transcripts]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
