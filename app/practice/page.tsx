@@ -84,7 +84,12 @@ export default function PracticePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: "Analyze this presentation PDF for clarity, flow, and errors.",
+          messages: [
+            {
+              role: 'user',
+              parts: [{ text: "Analyze this presentation PDF for clarity, flow, and errors. Give me a brief, one-paragraph summary of your findings." }],
+            },
+          ],
           pdfBase64: base64,
         }),
       });
