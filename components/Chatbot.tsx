@@ -27,6 +27,17 @@ export default function Chatbot({ isVisible, currentSlide, totalSlides, slideTim
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [context, setContext] = useState<string>('');
 
+  // Add a welcome message when the chatbot is opened
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      const welcomeMessage: Message = {
+        role: 'model',
+        parts: [{ text: "Hi! I'm Flo. How can I help you with your presentation?" }],
+      };
+      setMessages([welcomeMessage]);
+    }
+  }, [isOpen]);
+
   // Update context whenever presentation details change
   useEffect(() => {
     const formatTime = (seconds: number) => {
@@ -65,9 +76,10 @@ export default function Chatbot({ isVisible, currentSlide, totalSlides, slideTim
       role: 'user',
       parts: [{ text: input }],
     };
-
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
+    
+    // Use a functional update to get the latest state
+    setMessages(prevMessages => [...prevMessages, userMessage]);
+    const currentInput = input;
     setInput('');
     setIsLoading(true);
 
@@ -76,7 +88,7 @@ export default function Chatbot({ isVisible, currentSlide, totalSlides, slideTim
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: updatedMessages,
+          messages: [...messages, userMessage], // Send the full history
           context: context,
           pdfBase64: pdfBase64,
         }),
