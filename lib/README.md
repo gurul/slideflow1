@@ -1,82 +1,49 @@
-# PDF Compression Utility
+# File Upload Utility
 
-This module provides PDF compression functionality to handle large files before sending them to AI services.
+This module handles PDF file uploads with simple size validation.
 
 ## Features
 
-- **Target Size Compression**: Compresses PDF files to under 4MB for AI processing
-- **Automatic Compression**: Compresses PDF files to reduce size before AI processing
-- **Metadata Removal**: Removes unnecessary metadata to reduce file size
-- **Multi-Strategy Compression**: Uses multiple compression strategies for optimal results
-- **Size Validation**: Checks file sizes and provides compression ratios
-- **Error Handling**: Comprehensive error handling for compression failures
+- **File Size Validation**: Checks if PDF files are under 4MB before processing
+- **Clear Error Messages**: Provides user-friendly error messages for oversized files
+- **Simple Upload Process**: Direct file upload without complex compression
 
-## Functions
+## File Size Requirements
 
-### `compressPDF(file: File): Promise<Blob>`
-Basic PDF compression that removes metadata and applies standard compression settings.
-
-### `compressPDFToBase64(file: File): Promise<string>`
-Compresses a PDF and converts it to base64 string format.
-
-### `compressPDFWithFallback(file: File): Promise<Blob>`
-Enhanced compression that tries multiple strategies and returns the best result.
-
-### `compressPDFToTargetSize(file: File): Promise<Blob>`
-Forces compression to target size (4MB) using multiple aggressive strategies.
-
-### `isFileTooLarge(file: File, maxSizeMB?: number): boolean`
-Checks if a file exceeds the specified size limit (default: 10MB).
-
-### `isCompressedSizeAcceptable(compressedSize: number): boolean`
-Checks if the compressed size meets the target (4MB).
-
-### `getFileSizeInMB(file: File): number`
-Returns the file size in megabytes.
-
-### `getCompressionRatio(originalSize: number, compressedSize: number): number`
-Calculates the compression ratio as a percentage.
+- **Maximum Size**: 4MB
+- **Format**: PDF only
+- **Validation**: Checked immediately upon file selection
 
 ## Usage
 
 ```typescript
-import { compressPDFToTargetSize, getFileSizeInMB } from '@/lib/pdfCompression';
-
-// Compress a PDF file to under 4MB
+// Simple file size check
 const file = event.target.files[0];
-const originalSize = getFileSizeInMB(file);
-console.log(`Original size: ${originalSize.toFixed(2)} MB`);
+const fileSizeMB = file.size / (1024 * 1024);
 
-const compressedBlob = await compressPDFToTargetSize(file);
-const compressedSize = compressedBlob.size / (1024 * 1024);
-console.log(`Compressed size: ${compressedSize.toFixed(2)} MB`);
-
-// Check if compression was successful
-if (compressedSize > 4) {
-  console.error('File could not be compressed to under 4MB');
+if (fileSizeMB > 4) {
+  console.error(`File is too large (${fileSizeMB.toFixed(2)} MB). Please upload a file smaller than 4MB.`);
+  return;
 }
+
+// Process the file normally
+// ... upload and process logic
 ```
-
-## Compression Strategy
-
-1. **Standard Compression**: Removes metadata and applies basic compression
-2. **Aggressive Compression**: If standard compression doesn't reach target, applies more aggressive settings
-3. **Ultra-Aggressive Compression**: Multiple compression passes with most aggressive settings
-4. **Extreme Compression**: Final attempt with extreme settings if needed
-
-## Target Size
-
-The compression utility targets a maximum file size of **4MB** to ensure compatibility with AI services.
 
 ## Error Handling
 
-The module includes comprehensive error handling for:
-- Invalid PDF files
-- Compression failures
-- File reading errors
-- Base64 conversion errors
-- Target size not achieved
+The module provides clear error messages for:
+- Files larger than 4MB
+- Invalid file formats
+- Upload failures
 
-## Dependencies
+## User Guidance
 
-- `pdf-lib`: For PDF manipulation and compression 
+When files are too large, users are advised to:
+- Compress the PDF using their PDF software
+- Reduce the number of pages
+- Use a different, smaller file
+
+## Target Size
+
+The upload utility enforces a maximum file size of **4MB** to ensure compatibility with AI services. 

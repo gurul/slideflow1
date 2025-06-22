@@ -9,8 +9,6 @@ import { Play, Pause, Upload, Timer } from 'lucide-react';
 import PDFViewer from '@/components/PDFViewer';
 import ReactMarkdown from 'react-markdown';
 import Chatbot from '@/components/Chatbot';
-import { compressPDFToBase64, isFileTooLarge, getFileSizeInMB, compressPDFWithFallback, compressPDFToTargetSize, compressPDFSuperAggressive } from '@/lib/pdfCompression';
-import { compressPDFToTargetSizeWithIlovePDF, compressPDFToBase64WithIlovePDF } from '@/lib/ilovepdfCompression';
 
 export default function PracticePage() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -33,9 +31,12 @@ export default function PracticePage() {
       return;
     }
 
-    // Check file size and compress if necessary
-    const originalSizeMB = getFileSizeInMB(file);
-    console.log(`Original file size: ${originalSizeMB.toFixed(2)} MB`);
+    // Check file size - must be under 4MB
+    const fileSizeMB = file.size / (1024 * 1024);
+    if (fileSizeMB > 4) {
+      setError(`File is too large (${fileSizeMB.toFixed(2)} MB). Please upload a file smaller than 4MB.`);
+      return;
+    }
 
     try {
       setError(null);
@@ -44,66 +45,32 @@ export default function PracticePage() {
       setCurrentSlide(1);
       setHasUploadedPresentation(true);
 
-      // Try IlovePDF compression first (more powerful)
-      let compressedBlob: Blob;
-      let compressedSizeMB: number;
-      
-      try {
-        console.log('Attempting IlovePDF compression...');
-        compressedBlob = await compressPDFToTargetSizeWithIlovePDF(file);
-        compressedSizeMB = compressedBlob.size / (1024 * 1024);
-        console.log(`IlovePDF compressed file size: ${compressedSizeMB.toFixed(2)} MB`);
-      } catch (ilovepdfError) {
-        console.warn('IlovePDF compression failed, falling back to client-side compression:', ilovepdfError);
-        
-        // Fallback to client-side compression
-        compressedBlob = await compressPDFToTargetSize(file);
-        compressedSizeMB = compressedBlob.size / (1024 * 1024);
-        console.log(`Client-side compressed file size: ${compressedSizeMB.toFixed(2)} MB`);
-        
-        // If still too large, try super aggressive compression
-        if (compressedSizeMB > 4) {
-          console.log('Regular compression failed, trying super aggressive compression...');
-          compressedBlob = await compressPDFSuperAggressive(file);
-          compressedSizeMB = compressedBlob.size / (1024 * 1024);
-          console.log(`Super aggressive compressed file size: ${compressedSizeMB.toFixed(2)} MB`);
-        }
-      }
-
-      // Check if compression was successful
-      if (compressedSizeMB > 4) {
-        throw new Error(`File could not be compressed to under 4MB. Current size: ${compressedSizeMB.toFixed(2)} MB. Please try a smaller file or reduce the number of pages.`);
-      }
-
-      // Convert compressed blob to base64
-      const compressedBase64 = await new Promise<string>((resolve, reject) => {
+      // Convert file to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
           const result = reader.result as string;
           const base64 = result.split(',')[1];
           resolve(base64);
         };
-        reader.onerror = () => reject(new Error('Failed to convert compressed PDF to base64'));
-        reader.readAsDataURL(compressedBlob);
+        reader.onerror = () => reject(new Error('Failed to convert PDF to base64'));
+        reader.readAsDataURL(file);
       });
 
-      setPdfBase64(compressedBase64);
+      setPdfBase64(base64);
 
-      // Send compressed PDF to Gemini for analysis
+      // Send PDF to Gemini for analysis
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: "Analyze this presentation PDF for clarity, flow, and errors.",
-          pdfBase64: compressedBase64,
+          pdfBase64: base64,
         }),
       });
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        if (res.status === 413) {
-          throw new Error('The PDF file is still too large after compression. Please try a smaller file.');
-        }
         throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
       }
 
@@ -307,6 +274,22 @@ export default function PracticePage() {
               </span>
             )}
           </div>
+          
+          {/* File size requirement notice */}
+          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-start">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-600 mr-2 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <p className="text-sm font-medium text-green-800">File Size Requirement</p>
+                <p className="text-sm text-green-700 mt-1">
+                  Your PDF must be <strong>under 4MB</strong>. If your file is larger, please compress it first or reduce the number of pages.
+                </p>
+              </div>
+            </div>
+          </div>
+          
           {error && (
             <p className="text-red-500 text-sm mt-2 flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
