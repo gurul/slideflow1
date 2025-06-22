@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Play, Pause, Upload, Timer } from 'lucide-react';
+import { Play, Pause, Upload, Timer, Trash2, Info, FileText, Download } from 'lucide-react';
 import PDFViewer from '@/components/PDFViewer';
 import Chatbot from '@/components/Chatbot';
 import TranscriptDisplay from '@/components/TranscriptDisplay';
@@ -23,6 +23,8 @@ export default function PracticePage() {
   const [hasUploadedPresentation, setHasUploadedPresentation] = useState(false);
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
   const [maxReachedSlide, setMaxReachedSlide] = useState(0);
+  const [showTranscriptsModal, setShowTranscriptsModal] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Audio transcription hook
   const {
@@ -253,6 +255,67 @@ export default function PracticePage() {
   const graphMargin = 20; // px
   const innerGraphHeight = graphHeight - 2 * graphMargin;
 
+  const handleClearTranscripts = () => {
+    clearTranscripts();
+    setMaxReachedSlide(0);
+    setCurrentSlide(1);
+  };
+
+  const exportTranscripts = async (format: 'txt' | 'md') => {
+    if (transcripts.length === 0) return;
+    setIsExporting(true);
+
+    const slideGroups = transcripts.reduce((acc, entry) => {
+      if (!acc[entry.slideNumber]) {
+        acc[entry.slideNumber] = [];
+      }
+      acc[entry.slideNumber].push(entry);
+      return acc;
+    }, {} as Record<number, { slideNumber: number; text: string; timestamp: Date }[]>);
+
+    const allSlides = Array.from({ length: totalSlides }, (_, i) => i + 1);
+
+    let content = '';
+    let fileExtension = '';
+
+    if (format === 'md') {
+      content = `# Presentation Transcript\n\nGenerated on: ${new Date().toLocaleDateString()}\n\n${allSlides
+        .map((slideNum) => {
+          const entries = slideGroups[slideNum] || [];
+          const slideText = entries.map(entry => entry.text).join(' ');
+          return `## Slide ${slideNum}\n\n${slideText || '[No transcript]'}\n`;
+        })
+        .join('\n')}`;
+      fileExtension = 'md';
+    } else { // Default to TXT
+      content = allSlides
+        .map((slideNum) => {
+          const entries = slideGroups[slideNum] || [];
+          const slideText = entries.map(entry => entry.text).join(' ');
+          return `Slide ${slideNum}:\n${slideText || '[No transcript]'}\n`;
+        })
+        .join('\n');
+      fileExtension = 'txt';
+    }
+
+    try {
+      const blob = new Blob([content], { type: format === 'md' ? 'text/markdown' : 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `presentation-transcript-${new Date().toISOString().split('T')[0]}.${fileExtension}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting transcript:', error);
+      setError('Failed to export transcript.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
@@ -311,331 +374,290 @@ export default function PracticePage() {
         </Card>
 
         {pdfFile && (
-          <Card className="p-4 shadow-lg bg-white border-gray-200">
-            <div className="flex flex-col items-center gap-4">
-              <div className="flex w-full gap-4">
-                <div className="flex-1 aspect-video bg-gray-100 rounded-lg flex items-center justify-center shadow-md overflow-hidden">
-                  <div className="w-full h-full pdf-container" key={`pdf-${currentSlide}`}>
-                    <PDFViewer 
-                      file={pdfFile} 
-                      currentPage={currentSlide} 
-                      onTotalPagesFound={handleTotalPages} 
-                    />
-                  </div>
+          <div className="flex flex-col md:flex-row gap-8">
+            {/* Left side: PDF Viewer and controls */}
+            <div className="w-full md:w-2/3">
+              <Card className="p-4 shadow-lg bg-white border-gray-200 sticky top-4">
+                <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center shadow-md overflow-hidden mb-4">
+                    <div className="w-full h-full pdf-container" key={`pdf-${currentSlide}`}>
+                      <PDFViewer 
+                        file={pdfFile} 
+                        currentPage={currentSlide} 
+                        onTotalPagesFound={handleTotalPages} 
+                      />
+                    </div>
                 </div>
-                <div className="w-72 bg-white border rounded-lg p-4 shadow-md flex flex-col h-[580px]">
-                  <h3 className="text-lg font-semibold mb-2 text-gray-700 flex items-center border-b pb-2">
+
+                <div className="flex items-center gap-4 bg-white border rounded-lg p-3 shadow-sm w-full max-w-lg justify-center mx-auto">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={handlePreviousSlide}
+                    disabled={currentSlide === 1}
+                    className="border-gray-300 hover:bg-gray-100 hover:text-gray-900 transition-all"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Previous
+                  </Button>
+                  
+                  <Button
+                    onClick={isPlaying ? handlePause : handleStartPractice}
+                    size="lg"
+                    className={`w-32 transition-all ${isPlaying ? 'bg-gray-600 hover:bg-gray-700' : 'bg-gray-600 hover:bg-gray-700'}`}
+                  >
+                    {isPlaying ? (
+                      <>
+                        <Pause className="mr-2 h-5 w-5" />
+                        Pause
+                      </>
+                    ) : (
+                      <>
+                        <Play className="mr-2 h-5 w-5" />
+                        Play
+                      </>
+                    )}
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={handleNextSlide}
+                    disabled={currentSlide >= totalSlides}
+                    className="border-gray-300 hover:bg-gray-100 hover:text-gray-900 transition-all"
+                  >
+                    Next
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </Button>
+                </div>
+
+                <div className="text-sm bg-gray-50 p-2 mt-4 rounded-lg border shadow-sm w-full max-w-lg text-center mx-auto">
+                  <span className="font-semibold text-gray-700">Current Slide:</span> {formatTime(slideTimings[currentSlide - 1] || 0)} | 
+                  <span className="font-semibold text-gray-700 ml-2">Position:</span> Slide {currentSlide}/{totalSlides}
+                </div>
+              </Card>
+            </div>
+
+            {/* Right side: Timings and Transcripts */}
+            <div className="w-full md:w-1/3 flex flex-col gap-8">
+              <Card className="p-4 shadow-lg bg-white border-gray-200">
+                <div className="flex items-center justify-between mb-2 border-b pb-2">
+                  <h3 className="text-lg font-semibold text-gray-700 flex items-center">
                     <Timer className="h-5 w-5 mr-2" strokeWidth={2.5} />
                     Slide Timings
                   </h3>
-                  <div className="space-y-2 overflow-y-auto pr-1 flex-grow">
-                    {Array.from({ length: totalSlides }, (_, i) => (
-                      <div 
-                        key={i}
-                        className={`p-2 border rounded-lg flex justify-between items-center transition-all duration-200 ${
-                          currentSlide === i + 1 
-                            ? 'bg-gray-50 border-gray-300 shadow-sm' 
-                            : 'hover:bg-gray-50'
-                        }`}
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => setCurrentSlide(i + 1)}
-                      >
-                        <span className={`font-medium ${currentSlide === i + 1 ? 'text-gray-700' : ''}`}>
-                          Slide {i + 1}
-                        </span>
-                        <span className={`font-mono text-sm px-2 py-1 rounded ${
-                          slideTimings[i] 
-                            ? 'bg-gray-100 text-gray-800' 
-                            : 'bg-gray-50 text-gray-400'
-                        }`}>
-                          {formatTime(slideTimings[i] || 0)}
-                        </span>
-                      </div>
-                    ))}
+                  <div className="flex items-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleResetTimings}
+                      disabled={slideTimings.length === 0 || slideTimings.every(t => t === 0)}
+                      aria-label="Clear timings"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowStats(true)}
+                      disabled={totalSlides === 0}
+                      aria-label="Show statistics"
+                    >
+                      <Info className="h-4 w-4" />
+                    </Button>
                   </div>
-                  {!showStats && (
-                    <div className="flex flex-col gap-4 w-full mt-8">
-                      <Button
-                        onClick={handleResetTimings}
-                        disabled={slideTimings.length === 0 || slideTimings.every(t => t === 0)}
-                        className="w-full bg-black text-white border border-black hover:bg-gray-900 hover:text-white transition-all text-lg py-4"
-                        size="lg"
-                      >
-                        Reset Timings
-                      </Button>
-                      <Button
-                        className="w-full bg-black text-white border border-black hover:bg-gray-900 hover:text-white transition-all text-lg py-4"
-                        size="lg"
-                        onClick={() => setShowStats(true)}
-                      >
-                        Show Statistics
-                      </Button>
-                    </div>
-                  )}
-                  {showStats && (
-                    <>
-                      {/* Modal Backdrop */}
-                      <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                        {/* Modal Content */}
-                        <div className="bg-white rounded-lg border shadow-lg p-6 w-full max-w-xl relative">
-                          <button
-                            className="absolute top-2 right-2 text-gray-500 hover:text-black text-2xl font-bold"
-                            onClick={() => setShowStats(false)}
-                            aria-label="Close"
-                          >
-                            &times;
-                          </button>
-                          <h3 className="text-lg font-semibold text-gray-700 mb-2 flex items-center border-b pb-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M3 3a1 1 0 000 2h10a1 1 0 100-2H3zm0 4a1 1 0 000 2h10a1 1 0 100-2H3zm0 4a1 1 0 100 2h10a1 1 0 100-2H3z" clipRule="evenodd" />
-                            </svg>
-                            Presentation Statistics
-                          </h3>
-                          {/* --- Statistics Section Content Start --- */}
-                          <div className="grid grid-cols-2 gap-3 mb-3">
-                            <div className="bg-gray-50 rounded-lg p-2 text-center">
-                              <p className="text-sm text-gray-500 mb-1">Total Time</p>
-                              <p className="text-xl font-bold text-gray-700">
-                                {formatTime(slideTimings.reduce((total, time) => total + (time || 0), 0))}
-                              </p>
-                            </div>
-                            <div className="bg-gray-50 rounded-lg p-2 text-center">
-                              <p className="text-sm text-gray-500 mb-1">Average Time/Slide</p>
-                              <p className="text-xl font-bold text-gray-700">
-                                {formatTime(Math.round(
-                                  slideTimings.reduce((total, time) => total + (time || 0), 0) / 
-                                  (slideTimings.filter(t => t > 0).length || 1)
-                                ))}
-                              </p>
-                            </div>
-                          </div>
-                          <h4 className="font-medium text-gray-700 mb-2">Time Distribution</h4>
-                          <div className="bg-gray-50 p-3 rounded-lg">
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-sm text-gray-500">Time spent on each slide</span>
-                              <div className="flex items-center">
-                                <div className="w-3 h-3 bg-gray-600 rounded-full mr-1"></div>
-                                <span className="text-xs text-gray-500">Current Slide</span>
-                              </div>
-                            </div>
-                            <div className="bg-white p-3 rounded-lg border border-gray-100 h-56 relative mt-2">
-                              {/* Y-axis grid lines and labels */}
-                              <div className="absolute left-0 top-0 h-full w-full">
-                                {[0, 1, 2, 3, 4].map((i) => {
-                                  const y = graphMargin + (i * (innerGraphHeight / 4));
-                                  return (
-                                    <div key={i} className="absolute w-full border-t border-gray-100" style={{ top: `${(y / graphHeight) * 100}%`, left: 0 }}></div>
-                                  );
-                                })}
-                              </div>
-                              <div className="absolute left-8 top-0 right-0 bottom-0 flex flex-col">
-                                <div className="flex-1 relative">
-                                  <svg className="w-full h-full" width={graphWidth} height={graphHeight} viewBox={`0 0 ${graphWidth} ${graphHeight}`} preserveAspectRatio="none">
-                                    {/* Line */}
-                                    {slideTimings.filter(t => t > 0).length > 0 && (
-                                      <polyline
-                                        points={slideTimings.map((time, index) => {
-                                          const x = leftMargin + index * pointSpacing;
-                                          const y = graphMargin + (innerGraphHeight - ((time || 0) / maxTime * innerGraphHeight));
-                                          return `${x},${y}`;
-                                        }).join(' ')}
-                                        fill="none"
-                                        stroke="#4B5563"
-                                        strokeWidth="3"
-                                        strokeLinejoin="round"
-                                        strokeLinecap="round"
-                                      />
-                                    )}
-                                    {/* Data Points */}
-                                    {slideTimings.map((time, index) => {
-                                      const x = leftMargin + index * pointSpacing;
-                                      const y = graphMargin + (innerGraphHeight - ((time || 0) / maxTime * innerGraphHeight));
-                                      const isCurrentSlide = currentSlide === index + 1;
-                                      const tooltipWidth = 80;
-                                      const tooltipHeight = 32;
-                                      const tooltipArrow = 8;
-                                      // Clamp tooltip x so it doesn't overflow left/right
-                                      let tooltipX = x - tooltipWidth / 2;
-                                      if (tooltipX < 0) tooltipX = 0;
-                                      if (tooltipX + tooltipWidth > graphWidth) tooltipX = graphWidth - tooltipWidth;
-                                      // Calculate the offset for text/arrow so they're always centered on the point
-                                      const textOffset = x - tooltipX;
-                                      // If tooltip would go above, render below
-                                      const isNearTop = y - tooltipHeight - tooltipArrow < 0;
-                                      // If tooltip would go below, render above
-                                      const isNearBottom = y + tooltipHeight + tooltipArrow > graphHeight;
-                                      return (
-                                        <g key={index} className="group">
-                                          <circle
-                                            cx={x}
-                                            cy={y}
-                                            r={isCurrentSlide ? 8 : 6}
-                                            fill={isCurrentSlide ? "#374151" : "#6B7280"}
-                                            stroke="white"
-                                            strokeWidth="2"
-                                            className="transition-all duration-150 group-hover:scale-150"
-                                            style={{ transformOrigin: `${x}px ${y}px` }}
-                                          />
-                                          <g className="opacity-0 group-hover:opacity-100">
-                                            {isNearTop ? (
-                                              // Arrow points up, tooltip below
-                                              <>
-                                                <rect
-                                                  x={tooltipX}
-                                                  y={y + tooltipArrow}
-                                                  width={tooltipWidth}
-                                                  height={tooltipHeight}
-                                                  rx="8"
-                                                  fill="#374151"
-                                                />
-                                                <text
-                                                  x={tooltipX + textOffset}
-                                                  y={y + tooltipArrow + tooltipHeight / 2 + 6}
-                                                  textAnchor="middle"
-                                                  fill="white"
-                                                  fontSize="20"
-                                                  fontFamily="monospace"
-                                                >
-                                                  {formatTime(time || 0)}
-                                                </text>
-                                                <polygon
-                                                  points={`${x-tooltipArrow},${y+tooltipArrow} ${x},${y} ${x+tooltipArrow},${y+tooltipArrow}`}
-                                                  fill="#374151"
-                                                />
-                                              </>
-                                            ) : (
-                                              // Arrow points down, tooltip above
-                                              <>
-                                                <rect
-                                                  x={tooltipX}
-                                                  y={y - tooltipArrow - tooltipHeight}
-                                                  width={tooltipWidth}
-                                                  height={tooltipHeight}
-                                                  rx="8"
-                                                  fill="#374151"
-                                                />
-                                                <text
-                                                  x={tooltipX + textOffset}
-                                                  y={y - tooltipArrow - tooltipHeight / 2 + 6}
-                                                  textAnchor="middle"
-                                                  fill="white"
-                                                  fontSize="20"
-                                                  fontFamily="monospace"
-                                                >
-                                                  {formatTime(time || 0)}
-                                                </text>
-                                                <polygon
-                                                  points={`${x-tooltipArrow},${y-tooltipArrow} ${x},${y} ${x+tooltipArrow},${y-tooltipArrow}`}
-                                                  fill="#374151"
-                                                />
-                                              </>
-                                            )}
-                                          </g>
-                                        </g>
-                                      );
-                                    })}
-                                  </svg>
-                                </div>
-                                <div className="h-8 relative border-t border-gray-200 flex">
-                                  {slideTimings.length > 0 && slideTimings.map((_, index) => {
-                                    const x = leftMargin + index * pointSpacing;
-                                    const totalWidth = graphWidth;
-                                    const percentPos = x / totalWidth * 100;
-                                    return (
-                                      <div 
-                                        key={index} 
-                                        className="absolute flex flex-col items-center"
-                                        style={{ 
-                                          left: `${percentPos}%`, 
-                                          transform: 'translateX(-50%)'
-                                        }}
-                                      >
-                                        <div className="h-2 w-px bg-gray-300 mb-1"></div>
-                                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs ${
-                                          currentSlide === index + 1 ? 'bg-gray-600' : 'bg-gray-400'
-                                        }`}>
-                                          {index + 1}
-                                        </span>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="text-center text-xs text-gray-500 mt-2">Slide Number</div>
-                          </div>
-                          {/* --- Statistics Section Content End --- */}
-                        </div>
-                      </div>
-                    </>
-                  )}
                 </div>
-              </div>
-              
-              {/* Transcript Display */}
-              <TranscriptDisplay
-                transcripts={transcripts}
-                currentSlide={currentSlide}
-                maxReachedSlide={maxReachedSlide}
-                isRecording={isRecording}
-                isTranscribing={isTranscribing}
-                recordingSlideNumber={recordingSlideNumber}
-                onClearTranscripts={clearTranscripts}
-                className="w-full max-w-4xl"
-              />
-              
-              <div className="flex items-center gap-4 bg-white border rounded-lg p-3 shadow-sm w-full max-w-lg justify-center">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={handlePreviousSlide}
-                  disabled={currentSlide === 1}
-                  className="border-gray-300 hover:bg-gray-100 hover:text-gray-900 transition-all"
+                <div className="space-y-2 overflow-y-auto pr-1 flex-grow max-h-[480px]">
+                  {Array.from({ length: totalSlides }, (_, i) => (
+                    <div 
+                      key={i}
+                      className={`p-2 border rounded-lg flex justify-between items-center transition-all duration-200 ${
+                        currentSlide === i + 1 
+                          ? 'bg-gray-50 border-gray-300 shadow-sm' 
+                          : 'hover:bg-gray-50'
+                      }`}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => setCurrentSlide(i + 1)}
+                    >
+                      <span className={`font-medium ${currentSlide === i + 1 ? 'text-gray-700' : ''}`}>
+                        Slide {i + 1}
+                      </span>
+                      <span className={`font-mono text-sm px-2 py-1 rounded ${
+                        slideTimings[i] 
+                          ? 'bg-gray-100 text-gray-800' 
+                          : 'bg-gray-50 text-gray-400'
+                      }`}>
+                        {formatTime(slideTimings[i] || 0)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              {/* --- Transcription Section --- */}
+              <Card className="p-3 shadow-lg bg-white border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <h3 className="text-lg font-semibold text-gray-700">Transcription</h3>
+                    {isRecording ? (
+                      <div className="flex items-center text-sm font-medium text-red-600">
+                        <span className="relative flex h-2 w-2 mr-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
+                        </span>
+                        Recording
+                      </div>
+                    ) : (
+                      <div className="flex items-center text-sm font-medium text-gray-500">
+                        <span className="flex h-2 w-2 mr-2 bg-gray-400 rounded-full"></span>
+                        Not Recording
+                      </div>
+                    )}
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => setShowTranscriptsModal(true)} disabled={maxReachedSlide === 0}>
+                    <FileText className="h-4 w-4 mr-1" /> View
+                  </Button>
+                </div>
+              </Card>
+
+            </div>
+          </div>
+        )}
+
+        {/* --- Transcripts Modal --- */}
+        {showTranscriptsModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+            <Card className="bg-white rounded-lg border shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b">
+                <h3 className="text-xl font-semibold text-gray-800 flex items-center">
+                  <FileText className="h-6 w-6 mr-3 text-gray-600" />
+                  Slide Transcripts
+                </h3>
+                <button
+                  className="text-gray-400 hover:text-gray-800 transition-colors"
+                  onClick={() => setShowTranscriptsModal(false)}
+                  aria-label="Close"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                  <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                  Previous
-                </Button>
-                
-                <Button
-                  onClick={isPlaying ? handlePause : handleStartPractice}
-                  size="lg"
-                  className={`w-32 transition-all ${isPlaying ? 'bg-gray-600 hover:bg-gray-700' : 'bg-gray-600 hover:bg-gray-700'}`}
-                >
-                  {isPlaying ? (
-                    <>
-                      <Pause className="mr-2 h-5 w-5" />
-                      Pause
-                    </>
-                  ) : (
-                    <>
-                      <Play className="mr-2 h-5 w-5" />
-                      Play
-                    </>
-                  )}
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={handleNextSlide}
-                  disabled={currentSlide >= totalSlides}
-                  className="border-gray-300 hover:bg-gray-100 hover:text-gray-900 transition-all"
-                >
-                  Next
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                  </svg>
-                </Button>
+                </button>
               </div>
 
-              <div className="text-sm bg-gray-50 p-2 rounded-lg border shadow-sm w-full max-w-lg text-center">
-                <span className="font-semibold text-gray-700">Current Slide:</span> {formatTime(slideTimings[currentSlide - 1] || 0)} | 
-                <span className="font-semibold text-gray-700 ml-2">Position:</span> Slide {currentSlide}/{totalSlides}
+              <div className="p-4 flex-grow overflow-y-auto">
+                <TranscriptDisplay
+                  transcripts={transcripts}
+                  currentSlide={currentSlide}
+                  maxReachedSlide={maxReachedSlide}
+                  isRecording={isRecording}
+                  recordingSlideNumber={recordingSlideNumber}
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-4 border-t bg-gray-50 rounded-b-lg">
+                <Button
+                  variant="destructive"
+                  onClick={handleClearTranscripts}
+                  disabled={transcripts.length === 0}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear All
+                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => exportTranscripts('txt')}
+                    disabled={isExporting || transcripts.length === 0}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download .TXT
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => exportTranscripts('md')}
+                    disabled={isExporting || transcripts.length === 0}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download .MD
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Statistics Modal */}
+        {showStats && (
+          <>
+            {/* Modal Backdrop */}
+            <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+              {/* Modal Content */}
+              <div className="bg-white rounded-lg border shadow-lg p-6 w-full max-w-xl relative">
+                <button
+                  className="absolute top-2 right-2 text-gray-500 hover:text-black text-2xl font-bold"
+                  onClick={() => setShowStats(false)}
+                  aria-label="Close"
+                >
+                  &times;
+                </button>
+                <h3 className="text-lg font-semibold text-gray-700 mb-2 flex items-center border-b pb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M3 3a1 1 0 000 2h10a1 1 0 100-2H3zm0 4a1 1 0 000 2h10a1 1 0 100-2H3zm0 4a1 1 0 100 2h10a1 1 0 100-2H3z" clipRule="evenodd" />
+                  </svg>
+                  Presentation Statistics
+                </h3>
+                {/* --- Statistics Section Content Start --- */}
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div className="bg-gray-50 rounded-lg p-2 text-center">
+                    <p className="text-sm text-gray-500 mb-1">Total Time</p>
+                    <p className="text-xl font-bold text-gray-700">
+                      {formatTime(slideTimings.reduce((total, time) => total + (time || 0), 0))}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-2 text-center">
+                    <p className="text-sm text-gray-500 mb-1">Average Time/Slide</p>
+                    <p className="text-xl font-bold text-gray-700">
+                      {formatTime(Math.round(
+                        slideTimings.reduce((total, time) => total + (time || 0), 0) / 
+                        (slideTimings.filter(t => t > 0).length || 1)
+                      ))}
+                    </p>
+                  </div>
+                </div>
+                <h4 className="font-medium text-gray-700 mb-2">Time Distribution</h4>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-gray-500">Time spent on each slide</span>
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 bg-gray-600 rounded-full mr-1"></div>
+                      <span className="text-xs text-gray-500">Current Slide</span>
+                    </div>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg border border-gray-100 h-56 relative mt-2">
+                    {/* Y-axis grid lines and labels */}
+                    <div className="absolute left-0 top-0 h-full w-full">
+                      {[0, 1, 2, 3, 4].map((i) => {
+                        const y = graphMargin + (i * (innerGraphHeight / 4));
+                        return (
+                          <div key={i} className="absolute w-full border-t border-gray-100" style={{ top: `${(y / graphHeight) * 100}%`, left: 0 }}></div>
+                        );
+                      })}
+                    </div>
+                    <div className="absolute left-8 top-0 right-0 bottom-0 flex flex-col">
+                      <div className="flex-1 relative">
+                        <svg className="w-full h-full" width={graphWidth} height={graphHeight} viewBox={`0 0 ${graphWidth} ${graphHeight}`} preserveAspectRatio="xMidYMid meet">
+                          {/* ... existing code ... */}
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </Card>
+          </>
         )}
 
         {/* Chatbot will only show up after presentation is uploaded */}
@@ -651,4 +673,4 @@ export default function PracticePage() {
       </div>
     </div>
   );
-} 
+}
