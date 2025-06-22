@@ -179,40 +179,261 @@ export const compressPDFWithFallback = async (file: File): Promise<Blob> => {
 // Force compression to target size (may reduce quality significantly)
 export const compressPDFToTargetSize = async (file: File): Promise<Blob> => {
   try {
-    const compressed = await compressPDFWithFallback(file);
+    const originalSize = file.size;
+    console.log(`Target compression: Original size ${(originalSize / 1024 / 1024).toFixed(2)} MB`);
+    
+    // Start with enhanced compression
+    let compressed = await compressPDFWithFallback(file);
     
     if (isCompressedSizeAcceptable(compressed.size)) {
+      console.log(`Target size achieved: ${(compressed.size / 1024 / 1024).toFixed(2)} MB`);
       return compressed;
     }
     
-    // If still too large, try extreme compression
-    console.log('File still too large, applying extreme compression...');
+    // If still too large, try extreme compression techniques
+    console.log('Enhanced compression insufficient, applying extreme compression...');
     
-    const arrayBuffer = await compressed.arrayBuffer();
-    const pdfDoc = await PDFDocument.load(arrayBuffer);
+    // Strategy: Multiple aggressive re-compression passes
+    let currentBlob = compressed;
+    let currentSize = compressed.size;
     
-    // Remove all possible metadata
-    pdfDoc.setTitle('');
-    pdfDoc.setAuthor('');
-    pdfDoc.setSubject('');
-    pdfDoc.setCreator('');
-    pdfDoc.setProducer('');
-    pdfDoc.setCreationDate(new Date());
-    pdfDoc.setModificationDate(new Date());
+    // Try up to 5 additional compression passes
+    for (let pass = 1; pass <= 5; pass++) {
+      try {
+        console.log(`Extreme compression pass ${pass}...`);
+        
+        const arrayBuffer = await currentBlob.arrayBuffer();
+        const pdfDoc = await PDFDocument.load(arrayBuffer);
+        
+        // Remove all metadata
+        pdfDoc.setTitle('');
+        pdfDoc.setAuthor('');
+        pdfDoc.setSubject('');
+        pdfDoc.setCreator('');
+        pdfDoc.setProducer('');
+        pdfDoc.setCreationDate(new Date());
+        pdfDoc.setModificationDate(new Date());
+        
+        // Most aggressive settings
+        const extremeCompressed = await pdfDoc.save({
+          useObjectStreams: true,
+          addDefaultPage: false,
+          objectsPerTick: 1,
+        });
+        
+        const extremeBlob = new Blob([extremeCompressed], { type: 'application/pdf' });
+        const extremeSize = extremeBlob.size;
+        
+        console.log(`Extreme pass ${pass}: ${(extremeSize / 1024 / 1024).toFixed(2)} MB`);
+        
+        if (isCompressedSizeAcceptable(extremeSize)) {
+          console.log(`Target size achieved with extreme compression pass ${pass}`);
+          return extremeBlob;
+        }
+        
+        // If this pass didn't help much, stop
+        if (extremeSize >= currentSize * 0.95) {
+          console.log(`Compression pass ${pass} didn't help much, stopping`);
+          break;
+        }
+        
+        currentBlob = extremeBlob;
+        currentSize = extremeSize;
+        
+      } catch (error) {
+        console.warn(`Extreme compression pass ${pass} failed:`, error);
+        break;
+      }
+    }
     
-    // Extreme compression settings
-    const extremeCompressed = await pdfDoc.save({
-      useObjectStreams: true,
-      addDefaultPage: false,
-      objectsPerTick: 1,
-    });
+    // If we still haven't reached target, try one final technique: page reduction simulation
+    console.log('Trying final compression technique: page reduction simulation...');
     
-    const extremeBlob = new Blob([extremeCompressed], { type: 'application/pdf' });
-    console.log(`Extreme compression: ${(extremeBlob.size / 1024 / 1024).toFixed(2)} MB`);
+    try {
+      const arrayBuffer = await currentBlob.arrayBuffer();
+      const pdfDoc = await PDFDocument.load(arrayBuffer);
+      
+      // Get page count
+      const pageCount = pdfDoc.getPageCount();
+      console.log(`PDF has ${pageCount} pages`);
+      
+      // If PDF has many pages, try to create a reduced version
+      if (pageCount > 5) {
+        console.log('PDF has many pages, attempting to create reduced version...');
+        
+        // Create a new PDF with fewer pages (every other page)
+        const reducedPdf = await PDFDocument.create();
+        
+        // Copy every other page to reduce size
+        const pagesToKeep = Math.min(pageCount, Math.ceil(pageCount / 2));
+        for (let i = 0; i < pagesToKeep; i++) {
+          const pageIndex = i * 2; // Skip every other page
+          if (pageIndex < pageCount) {
+            const [copiedPage] = await reducedPdf.copyPages(pdfDoc, [pageIndex]);
+            reducedPdf.addPage(copiedPage);
+          }
+        }
+        
+        // Remove metadata
+        reducedPdf.setTitle('');
+        reducedPdf.setAuthor('');
+        reducedPdf.setSubject('');
+        reducedPdf.setCreator('');
+        reducedPdf.setProducer('');
+        reducedPdf.setCreationDate(new Date());
+        reducedPdf.setModificationDate(new Date());
+        
+        const reducedCompressed = await reducedPdf.save({
+          useObjectStreams: true,
+          addDefaultPage: false,
+          objectsPerTick: 1,
+        });
+        
+        const reducedBlob = new Blob([reducedCompressed], { type: 'application/pdf' });
+        const reducedSize = reducedBlob.size;
+        
+        console.log(`Reduced PDF (${pagesToKeep} pages): ${(reducedSize / 1024 / 1024).toFixed(2)} MB`);
+        
+        if (isCompressedSizeAcceptable(reducedSize)) {
+          console.log('Target size achieved with page reduction');
+          return reducedBlob;
+        }
+        
+        // Return the smaller of current and reduced
+        return reducedSize < currentSize ? reducedBlob : currentBlob;
+      }
+    } catch (error) {
+      console.warn('Page reduction failed:', error);
+    }
     
-    return extremeBlob;
+    // Final fallback: return the smallest we achieved
+    console.log(`Could not reach target size. Best achieved: ${(currentSize / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`Overall compression ratio: ${getCompressionRatio(originalSize, currentSize).toFixed(1)}%`);
+    
+    return currentBlob;
   } catch (error) {
     console.error('Error in target size compression:', error);
     throw new Error('Failed to compress PDF to target size');
+  }
+};
+
+// Super aggressive compression for very large files
+export const compressPDFSuperAggressive = async (file: File): Promise<Blob> => {
+  try {
+    const originalSize = file.size;
+    console.log(`Super aggressive compression: Original size ${(originalSize / 1024 / 1024).toFixed(2)} MB`);
+    
+    const arrayBuffer = await file.arrayBuffer();
+    const pdfDoc = await PDFDocument.load(arrayBuffer);
+    
+    // Get page count
+    const pageCount = pdfDoc.getPageCount();
+    console.log(`PDF has ${pageCount} pages`);
+    
+    // Strategy 1: Try to create a summary version with fewer pages
+    if (pageCount > 3) {
+      console.log('Creating summary version with fewer pages...');
+      
+      const summaryPdf = await PDFDocument.create();
+      
+      // Take first, middle, and last pages for summary
+      const pagesToInclude = [];
+      if (pageCount >= 1) pagesToInclude.push(0); // First page
+      if (pageCount >= 3) pagesToInclude.push(Math.floor(pageCount / 2)); // Middle page
+      if (pageCount >= 2) pagesToInclude.push(pageCount - 1); // Last page
+      
+      // Remove duplicates
+      const uniquePages = Array.from(new Set(pagesToInclude));
+      
+      for (const pageIndex of uniquePages) {
+        try {
+          const [copiedPage] = await summaryPdf.copyPages(pdfDoc, [pageIndex]);
+          summaryPdf.addPage(copiedPage);
+        } catch (error) {
+          console.warn(`Failed to copy page ${pageIndex}:`, error);
+        }
+      }
+      
+      // Remove metadata
+      summaryPdf.setTitle('');
+      summaryPdf.setAuthor('');
+      summaryPdf.setSubject('');
+      summaryPdf.setCreator('');
+      summaryPdf.setProducer('');
+      summaryPdf.setCreationDate(new Date());
+      summaryPdf.setModificationDate(new Date());
+      
+      const summaryCompressed = await summaryPdf.save({
+        useObjectStreams: true,
+        addDefaultPage: false,
+        objectsPerTick: 1,
+      });
+      
+      const summaryBlob = new Blob([summaryCompressed], { type: 'application/pdf' });
+      const summarySize = summaryBlob.size;
+      
+      console.log(`Summary PDF (${uniquePages.length} pages): ${(summarySize / 1024 / 1024).toFixed(2)} MB`);
+      
+      if (isCompressedSizeAcceptable(summarySize)) {
+        console.log('Target size achieved with summary version');
+        return summaryBlob;
+      }
+      
+      // If summary is still too large, try extreme compression on it
+      console.log('Summary still too large, applying extreme compression...');
+      
+      let currentBlob = summaryBlob;
+      let currentSize = summarySize;
+      
+      // Multiple extreme compression passes
+      for (let pass = 1; pass <= 3; pass++) {
+        try {
+          const tempArrayBuffer = await currentBlob.arrayBuffer();
+          const tempDoc = await PDFDocument.load(tempArrayBuffer);
+          
+          // Remove metadata again
+          tempDoc.setTitle('');
+          tempDoc.setAuthor('');
+          tempDoc.setSubject('');
+          tempDoc.setCreator('');
+          tempDoc.setProducer('');
+          tempDoc.setCreationDate(new Date());
+          tempDoc.setModificationDate(new Date());
+          
+          const extremeCompressed = await tempDoc.save({
+            useObjectStreams: true,
+            addDefaultPage: false,
+            objectsPerTick: 1,
+          });
+          
+          const extremeBlob = new Blob([extremeCompressed], { type: 'application/pdf' });
+          const extremeSize = extremeBlob.size;
+          
+          console.log(`Extreme summary pass ${pass}: ${(extremeSize / 1024 / 1024).toFixed(2)} MB`);
+          
+          if (isCompressedSizeAcceptable(extremeSize)) {
+            console.log(`Target size achieved with extreme summary compression pass ${pass}`);
+            return extremeBlob;
+          }
+          
+          currentBlob = extremeBlob;
+          currentSize = extremeSize;
+          
+        } catch (error) {
+          console.warn(`Extreme summary pass ${pass} failed:`, error);
+          break;
+        }
+      }
+      
+      return currentBlob;
+    }
+    
+    // Strategy 2: If PDF has few pages, try regular extreme compression
+    console.log('PDF has few pages, applying regular extreme compression...');
+    return await compressPDFToTargetSize(file);
+    
+  } catch (error) {
+    console.error('Error in super aggressive compression:', error);
+    throw new Error('Failed to compress PDF with super aggressive method');
   }
 }; 

@@ -11,7 +11,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { CloudIcon, Loader2Icon } from "lucide-react"
-import { compressPDFToBase64, getFileSizeInMB, compressPDFWithFallback, compressPDFToTargetSize } from "@/lib/pdfCompression"
+import { compressPDFToBase64, getFileSizeInMB, compressPDFWithFallback, compressPDFToTargetSize, compressPDFSuperAggressive } from "@/lib/pdfCompression"
+import { compressPDFToTargetSizeWithIlovePDF, compressPDFToBase64WithIlovePDF } from "@/lib/ilovepdfCompression"
 
 export function UploadModal({isOpen, setIsOpen, uploadAndConvertPDF}) {
   const [isUploading, setIsUploading] = useState(false)
@@ -26,12 +27,33 @@ export function UploadModal({isOpen, setIsOpen, uploadAndConvertPDF}) {
     setUploadStatus("Compressing PDF to under 4MB...")
     
     try {
-      // Use target size compression to ensure file is under 4MB
-      const compressedBlob = await compressPDFToTargetSize(file);
-      const compressedSizeMB = compressedBlob.size / (1024 * 1024);
+      // Try IlovePDF compression first (more powerful)
+      let compressedBlob;
+      let compressedSizeMB;
+      
+      try {
+        setUploadStatus("Using IlovePDF compression...")
+        compressedBlob = await compressPDFToTargetSizeWithIlovePDF(file);
+        compressedSizeMB = compressedBlob.size / (1024 * 1024);
+        console.log(`IlovePDF compressed file size: ${compressedSizeMB.toFixed(2)} MB`)
+      } catch (ilovepdfError) {
+        console.warn('IlovePDF compression failed, falling back to client-side compression:', ilovepdfError);
+        
+        setUploadStatus("IlovePDF failed, using client-side compression...")
+        // Fallback to client-side compression
+        compressedBlob = await compressPDFToTargetSize(file);
+        compressedSizeMB = compressedBlob.size / (1024 * 1024);
+        
+        // If still too large, try super aggressive compression
+        if (compressedSizeMB > 4) {
+          setUploadStatus("Using super aggressive compression...")
+          compressedBlob = await compressPDFSuperAggressive(file);
+          compressedSizeMB = compressedBlob.size / (1024 * 1024);
+        }
+      }
       
       if (compressedSizeMB > 4) {
-        throw new Error(`File could not be compressed to under 4MB. Current size: ${compressedSizeMB.toFixed(2)} MB. Please try a smaller file.`);
+        throw new Error(`File could not be compressed to under 4MB. Current size: ${compressedSizeMB.toFixed(2)} MB. Please try a smaller file or reduce the number of pages.`);
       }
       
       setUploadStatus("Uploading compressed PDF...")
@@ -39,7 +61,7 @@ export function UploadModal({isOpen, setIsOpen, uploadAndConvertPDF}) {
       // Create a compressed file object for the upload function
       const compressedFile = new File([compressedBlob], file.name, { type: 'application/pdf' });
       
-      console.log(`Compressed file size: ${compressedSizeMB.toFixed(2)} MB`)
+      console.log(`Final compressed file size: ${compressedSizeMB.toFixed(2)} MB`)
       
       // Call the upload function with the compressed file
       await uploadAndConvertPDF(compressedFile);

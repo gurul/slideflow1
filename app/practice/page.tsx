@@ -9,7 +9,8 @@ import { Play, Pause, Upload, Timer } from 'lucide-react';
 import PDFViewer from '@/components/PDFViewer';
 import ReactMarkdown from 'react-markdown';
 import Chatbot from '@/components/Chatbot';
-import { compressPDFToBase64, isFileTooLarge, getFileSizeInMB, compressPDFWithFallback, compressPDFToTargetSize } from '@/lib/pdfCompression';
+import { compressPDFToBase64, isFileTooLarge, getFileSizeInMB, compressPDFWithFallback, compressPDFToTargetSize, compressPDFSuperAggressive } from '@/lib/pdfCompression';
+import { compressPDFToTargetSizeWithIlovePDF, compressPDFToBase64WithIlovePDF } from '@/lib/ilovepdfCompression';
 
 export default function PracticePage() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -43,14 +44,35 @@ export default function PracticePage() {
       setCurrentSlide(1);
       setHasUploadedPresentation(true);
 
-      // Use target size compression to ensure file is under 4MB
-      const compressedBlob = await compressPDFToTargetSize(file);
-      const compressedSizeMB = compressedBlob.size / (1024 * 1024);
-      console.log(`Compressed file size: ${compressedSizeMB.toFixed(2)} MB`);
+      // Try IlovePDF compression first (more powerful)
+      let compressedBlob: Blob;
+      let compressedSizeMB: number;
+      
+      try {
+        console.log('Attempting IlovePDF compression...');
+        compressedBlob = await compressPDFToTargetSizeWithIlovePDF(file);
+        compressedSizeMB = compressedBlob.size / (1024 * 1024);
+        console.log(`IlovePDF compressed file size: ${compressedSizeMB.toFixed(2)} MB`);
+      } catch (ilovepdfError) {
+        console.warn('IlovePDF compression failed, falling back to client-side compression:', ilovepdfError);
+        
+        // Fallback to client-side compression
+        compressedBlob = await compressPDFToTargetSize(file);
+        compressedSizeMB = compressedBlob.size / (1024 * 1024);
+        console.log(`Client-side compressed file size: ${compressedSizeMB.toFixed(2)} MB`);
+        
+        // If still too large, try super aggressive compression
+        if (compressedSizeMB > 4) {
+          console.log('Regular compression failed, trying super aggressive compression...');
+          compressedBlob = await compressPDFSuperAggressive(file);
+          compressedSizeMB = compressedBlob.size / (1024 * 1024);
+          console.log(`Super aggressive compressed file size: ${compressedSizeMB.toFixed(2)} MB`);
+        }
+      }
 
       // Check if compression was successful
       if (compressedSizeMB > 4) {
-        throw new Error(`File could not be compressed to under 4MB. Current size: ${compressedSizeMB.toFixed(2)} MB. Please try a smaller file.`);
+        throw new Error(`File could not be compressed to under 4MB. Current size: ${compressedSizeMB.toFixed(2)} MB. Please try a smaller file or reduce the number of pages.`);
       }
 
       // Convert compressed blob to base64
