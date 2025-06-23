@@ -242,8 +242,14 @@ export default function PracticePage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleResetTimings = () => {
-    setSlideTimings(Array(slideTimings.length).fill(0));
+  const handleClearAllData = () => {
+    setSlideTimings(Array(totalSlides).fill(0));
+    clearTranscripts();
+    setMaxReachedSlide(1);
+    setCurrentSlide(1);
+    if (isPlaying) {
+      handlePause();
+    }
   };
 
   // Guard against rendering graph if there's no data
@@ -459,11 +465,13 @@ export default function PracticePage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={handleResetTimings}
-                      disabled={slideTimings.length === 0 || slideTimings.every(t => t === 0)}
-                      aria-label="Clear timings"
+                      onClick={handleClearAllData}
+                      disabled={!hasTimingData && transcripts.length === 0}
+                      className="flex items-center text-red-500 hover:text-red-700 disabled:text-gray-400"
+                      aria-label="Clear all data"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Clear All
                     </Button>
                     <Button
                       variant="ghost"
@@ -564,15 +572,7 @@ export default function PracticePage() {
                 />
               </div>
 
-              <div className="flex items-center justify-between p-4 border-t bg-gray-50 rounded-b-lg">
-                <Button
-                  variant="destructive"
-                  onClick={handleClearTranscripts}
-                  disabled={transcripts.length === 0}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Clear All
-                </Button>
+              <div className="flex items-center justify-end p-4 border-t bg-gray-50 rounded-b-lg">
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
@@ -700,8 +700,19 @@ export default function PracticePage() {
                                     />
                                     {/* Tooltip on Hover */}
                                     <g className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <rect x={x - 25} y={y - 30} width="50" height="20" rx="4" fill="#374151" />
-                                        <text x={x} y={y - 16} textAnchor="middle" fill="white" fontSize="12">{formatTime(time || 0)}</text>
+                                        {y < 40 ? (
+                                            // Render tooltip BELOW the point if it's too high
+                                            <>
+                                                <rect x={x - 25} y={y + 10} width="50" height="20" rx="4" fill="#374151" />
+                                                <text x={x} y={y + 24} textAnchor="middle" fill="white" fontSize="12">{formatTime(time || 0)}</text>
+                                            </>
+                                        ) : (
+                                            // Render tooltip ABOVE the point by default
+                                            <>
+                                                <rect x={x - 25} y={y - 30} width="50" height="20" rx="4" fill="#374151" />
+                                                <text x={x} y={y - 16} textAnchor="middle" fill="white" fontSize="12">{formatTime(time || 0)}</text>
+                                            </>
+                                        )}
                                     </g>
                                     {/* Slide Number Label */}
                                     <text x={x} y={graphHeight - 5} textAnchor="middle" fontSize="12" fill="#6B7280">{index + 1}</text>
