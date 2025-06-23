@@ -32,6 +32,7 @@ export default function PracticePage() {
     isTranscribing,
     transcripts,
     recordingSlideNumber,
+    pendingOperations,
     startRecording,
     stopRecording,
     clearTranscripts,
@@ -559,6 +560,7 @@ export default function PracticePage() {
                   maxReachedSlide={maxReachedSlide}
                   isRecording={isRecording}
                   recordingSlideNumber={recordingSlideNumber}
+                  pendingOperations={pendingOperations}
                 />
               </div>
 

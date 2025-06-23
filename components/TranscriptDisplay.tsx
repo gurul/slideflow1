@@ -1,7 +1,7 @@
 'use client';
 
 import { Card } from '@/components/ui/card';
-import { Mic, MicOff, Loader2 } from 'lucide-react';
+import { Mic, MicOff, Loader2, Clock } from 'lucide-react';
 
 interface TranscriptEntry {
   slideNumber: number;
@@ -15,6 +15,7 @@ interface TranscriptDisplayProps {
   maxReachedSlide: number;
   isRecording: boolean;
   recordingSlideNumber: number | null;
+  pendingOperations?: Map<string, number>;
   className?: string;
 }
 
@@ -24,6 +25,7 @@ export default function TranscriptDisplay({
   maxReachedSlide,
   isRecording,
   recordingSlideNumber,
+  pendingOperations = new Map(),
   className = ''
 }: TranscriptDisplayProps) {
 
@@ -36,6 +38,11 @@ export default function TranscriptDisplay({
   }, {} as Record<number, TranscriptEntry[]>);
 
   const allSlides = Array.from({ length: maxReachedSlide }, (_, i) => i + 1);
+
+  // Check if a slide has pending async operations
+  const hasPendingOperation = (slideNumber: number) => {
+    return Array.from(pendingOperations.values()).includes(slideNumber);
+  };
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -55,6 +62,7 @@ export default function TranscriptDisplay({
           
           const isCurrentlyRecordingThisSlide = isRecording && recordingSlideNumber === slideNumber;
           const hasTranscript = entries && entries.length > 0;
+          const isPendingAsync = hasPendingOperation(slideNumber);
 
           return (
             <div
@@ -82,6 +90,9 @@ export default function TranscriptDisplay({
                   {isPreviousSlide && hasTranscript && (
                     <span className="ml-2 inline-block w-2 h-2 bg-green-500 rounded-full"></span>
                   )}
+                  {isPendingAsync && (
+                    <span className="ml-2 inline-block w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+                  )}
                 </h4>
                 {entries && (
                   <span className="text-xs text-gray-400">
@@ -98,6 +109,11 @@ export default function TranscriptDisplay({
                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                      Recording... transcript will appear here when you move to the next slide.
                    </div>
+                ) : isPendingAsync ? (
+                  <div className="text-sm text-yellow-600 italic flex items-center">
+                    <Clock className="h-4 w-4 mr-2 animate-pulse" />
+                    Processing audio...
+                  </div>
                 ) : slideText ? (
                   slideText
                 ) : isPreviousSlide ? (

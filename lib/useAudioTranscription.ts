@@ -11,17 +11,118 @@ interface UseAudioTranscriptionProps {
   onError?: (error: string) => void;
 }
 
+// Helper function to get audio duration from a blob
+const getAudioDuration = (audioBlob: Blob): Promise<number> => {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') {
+      return reject(new Error('Cannot get audio duration on the server.'));
+    }
+    try {
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audioElement = document.createElement('audio');
+      audioElement.src = audioUrl;
+
+      audioElement.onloadedmetadata = () => {
+        URL.revokeObjectURL(audioUrl);
+        resolve(audioElement.duration);
+      };
+
+      audioElement.onerror = (e) => {
+        URL.revokeObjectURL(audioUrl);
+        console.error('Error loading audio metadata:', e);
+        reject(new Error('Failed to load audio metadata to determine duration.'));
+      };
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
 export function useAudioTranscription({ onTranscriptUpdate, onError }: UseAudioTranscriptionProps = {}) {
   const [isRecording, setIsRecording] = useState(false);
   const [transcripts, setTranscripts] = useState<TranscriptEntry[]>([]);
   const [currentSlide, setCurrentSlide] = useState(1);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [recordingSlideNumber, setRecordingSlideNumber] = useState<number | null>(null);
+  const [pendingOperations, setPendingOperations] = useState<Map<string, number>>(new Map());
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const onStopPromiseResolverRef = useRef<((value: void | PromiseLike<void>) => void) | null>(null);
+  const pollingIntervalsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Poll for async operation completion
+  const pollOperationStatus = useCallback(async (operationName: string, slideNumber: number) => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch('/api/transcribe/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            operationName,
+            slideNumber
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.status === 'COMPLETED') {
+          // Clear the polling interval
+          clearInterval(pollInterval);
+          pollingIntervalsRef.current.delete(operationName);
+          
+          // Remove from pending operations
+          setPendingOperations(prev => {
+            const newMap = new Map(prev);
+            newMap.delete(operationName);
+            return newMap;
+          });
+
+          // Add transcript if there's content
+          if (data.transcript) {
+            const newEntry: TranscriptEntry = {
+              slideNumber,
+              text: data.transcript,
+              timestamp: new Date()
+            };
+            
+            setTranscripts(prev => {
+              const updated = [...prev, newEntry];
+              onTranscriptUpdate?.(updated);
+              return updated;
+            });
+          }
+
+          setIsTranscribing(false);
+        } else if (data.status === 'RUNNING') {
+          // Continue polling
+          console.log(`Transcription still in progress for slide ${slideNumber}...`);
+        }
+      } catch (error) {
+        console.error('Error polling operation status:', error);
+        clearInterval(pollInterval);
+        pollingIntervalsRef.current.delete(operationName);
+        
+        // Remove from pending operations
+        setPendingOperations(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(operationName);
+          return newMap;
+        });
+        
+        onError?.(error instanceof Error ? error.message : 'Failed to check transcription status');
+        setIsTranscribing(false);
+      }
+    }, 2000); // Poll every 2 seconds
+
+    // Store the interval reference
+    pollingIntervalsRef.current.set(operationName, pollInterval);
+  }, [onTranscriptUpdate, onError]);
 
   const transcribeAudio = useCallback(async (slideNumberForThisTranscript: number) => {
     if (audioChunksRef.current.length === 0) return;
@@ -37,7 +138,7 @@ export function useAudioTranscription({ onTranscriptUpdate, onError }: UseAudioT
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           audioData: base64Audio,
-          slideNumber: slideNumberForThisTranscript
+          slideNumber: slideNumberForThisTranscript,
         }),
       });
       
@@ -60,28 +161,37 @@ export function useAudioTranscription({ onTranscriptUpdate, onError }: UseAudioT
       
       const data = await response.json();
       
-      if (data.success && data.transcript) {
-        const newEntry: TranscriptEntry = {
-          slideNumber: slideNumberForThisTranscript,
-          text: data.transcript,
-          timestamp: new Date()
-        };
-        
-        setTranscripts(prev => {
-          const updated = [...prev, newEntry];
-          onTranscriptUpdate?.(updated);
-          return updated;
-        });
+      if (data.success) {
+        if (data.isAsync && data.operationName) {
+          // Handle async transcription
+          setPendingOperations(prev => new Map(prev).set(data.operationName, slideNumberForThisTranscript));
+          await pollOperationStatus(data.operationName, slideNumberForThisTranscript);
+        } else if (data.transcript) {
+          // Handle sync transcription
+          const newEntry: TranscriptEntry = {
+            slideNumber: slideNumberForThisTranscript,
+            text: data.transcript,
+            timestamp: new Date()
+          };
+          
+          setTranscripts(prev => {
+            const updated = [...prev, newEntry];
+            onTranscriptUpdate?.(updated);
+            return updated;
+          });
+          
+          setIsTranscribing(false);
+        }
       }
       
     } catch (error) {
       console.error('Transcription error:', error);
       onError?.(error instanceof Error ? error.message : 'Failed to transcribe audio');
-    } finally {
       setIsTranscribing(false);
+    } finally {
       audioChunksRef.current = [];
     }
-  }, [onTranscriptUpdate, onError]);
+  }, [onTranscriptUpdate, onError, pollOperationStatus]);
 
   const initializeRecording = useCallback(async () => {
     try {
@@ -217,6 +327,9 @@ export function useAudioTranscription({ onTranscriptUpdate, onError }: UseAudioT
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
+      // Clear all polling intervals
+      pollingIntervalsRef.current.forEach(interval => clearInterval(interval));
+      pollingIntervalsRef.current.clear();
     };
   }, []);
 
@@ -226,6 +339,7 @@ export function useAudioTranscription({ onTranscriptUpdate, onError }: UseAudioT
     transcripts,
     currentSlide,
     recordingSlideNumber,
+    pendingOperations,
     startRecording,
     stopRecording,
     clearTranscripts,

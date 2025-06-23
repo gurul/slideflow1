@@ -1,45 +1,95 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SpeechClient } from '@google-cloud/speech';
+import { Storage } from '@google-cloud/storage';
+import { v4 as uuidv4 } from 'uuid';
 
-// Initialize Google Cloud Speech client with base64 credentials
+// Initialize Google Cloud clients with base64 credentials
 let speechClient: SpeechClient | null = null;
+let storage: Storage | null = null;
+let gcsBucketName: string | null = null;
 
-function initializeSpeechClient() {
-  if (!speechClient) {
-    const credentialsBase64 = process.env.GOOGLE_CREDENTIALS_BASE64;
-    if (!credentialsBase64) {
-      throw new Error('GOOGLE_CREDENTIALS_BASE64 environment variable is not set');
-    }
-
-    try {
-      // Decode base64 to string
-      const decodedString = Buffer.from(credentialsBase64, 'base64').toString('utf8');
-      
-      // Try to parse as JSON
-      const credentials = JSON.parse(decodedString);
-      
-      // Validate that it looks like a service account key
-      if (!credentials.type || !credentials.project_id) {
-        throw new Error('Invalid service account key format');
-      }
-      
-      speechClient = new SpeechClient({ credentials });
-    } catch (parseError) {
-      console.error('Error parsing credentials:', parseError);
-      console.error('Base64 length:', credentialsBase64.length);
-      console.error('First 100 chars of base64:', credentialsBase64.substring(0, 100));
-      
-      if (parseError instanceof SyntaxError) {
-        throw new Error('Invalid JSON in credentials. Please check your GOOGLE_CREDENTIALS_BASE64 format.');
-      }
-      throw new Error('Failed to decode credentials. Please check your GOOGLE_CREDENTIALS_BASE64.');
-    }
+function initializeClients() {
+  if (speechClient && storage) {
+    return;
   }
-  return speechClient;
+
+  const credentialsBase64 = process.env.GOOGLE_CREDENTIALS_BASE64;
+  if (!credentialsBase64) {
+    throw new Error('GOOGLE_CREDENTIALS_BASE64 environment variable is not set');
+  }
+
+  gcsBucketName = process.env.GCS_BUCKET_NAME || null;
+  if (!gcsBucketName) {
+    throw new Error('GCS_BUCKET_NAME environment variable is not set');
+  }
+
+  try {
+    const decodedString = Buffer.from(credentialsBase64, 'base64').toString('utf8');
+    const credentials = JSON.parse(decodedString);
+
+    if (!credentials.type || !credentials.project_id) {
+      throw new Error('Invalid service account key format');
+    }
+    
+    speechClient = new SpeechClient({ credentials });
+    storage = new Storage({ credentials });
+
+  } catch (parseError) {
+    console.error('Error parsing credentials:', parseError);
+    if (parseError instanceof SyntaxError) {
+      throw new Error('Invalid JSON in credentials. Please check your GOOGLE_CREDENTIALS_BASE64 format.');
+    }
+    throw new Error('Failed to decode credentials. Please check your GOOGLE_CREDENTIALS_BASE64.');
+  }
+}
+
+async function transcribeWithGcs(audioData: string, slideNumber: number) {
+  initializeClients();
+
+  // The 'storage' and 'gcsBucketName' are guaranteed to be initialized here.
+  // Using non-null assertion operator (!) as a type guard.
+  const bucket = storage!.bucket(gcsBucketName!);
+
+  const audioBuffer = Buffer.from(audioData, 'base64');
+  const fileId = `${uuidv4()}.webm`;
+  const file = bucket.file(fileId);
+
+  await file.save(audioBuffer, {
+    metadata: {
+      contentType: 'audio/webm;codecs=opus',
+    },
+  });
+
+  const gcsUri = `gs://${gcsBucketName}/${fileId}`;
+
+  const request = {
+    audio: {
+      uri: gcsUri,
+    },
+    config: {
+      encoding: 'WEBM_OPUS' as const,
+      sampleRateHertz: 48000,
+      languageCode: 'en-US',
+      enableAutomaticPunctuation: true,
+      model: 'latest_long',
+    },
+  };
+
+  // The 'speechClient' is guaranteed to be initialized.
+  const [operation] = await speechClient!.longRunningRecognize(request);
+  
+  return {
+    operationName: operation.name,
+    slideNumber,
+    success: true,
+    isAsync: true,
+    gcsUri, // Return the URI for potential cleanup later
+  };
 }
 
 export async function POST(req: NextRequest) {
   try {
+    initializeClients();
     const { audioData, slideNumber } = await req.json();
 
     if (!audioData) {
@@ -48,49 +98,10 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
-    // Initialize the speech client
-    const client = initializeSpeechClient();
-
-    // Configure the recognition request
-    const request = {
-      audio: {
-        content: audioData, // Send as base64
-      },
-      config: {
-        encoding: 'WEBM_OPUS' as const, // Adjust based on your audio format
-        sampleRateHertz: 48000, // Adjust based on your audio sample rate
-        languageCode: 'en-US',
-        enableAutomaticPunctuation: true,
-        enableWordTimeOffsets: false,
-        enableWordConfidence: false,
-        model: 'latest_long', // Best for longer audio segments
-      },
-    };
-
-    // Perform the transcription
-    const [response] = await client.recognize(request);
     
-    if (!response.results || response.results.length === 0) {
-      return NextResponse.json({
-        transcript: '',
-        slideNumber,
-        success: true,
-        message: 'No speech detected'
-      });
-    }
-
-    // Extract the transcript
-    const transcript = response.results
-      .map((result: any) => result.alternatives?.[0]?.transcript || '')
-      .join(' ')
-      .trim();
-
-    return NextResponse.json({
-      transcript,
-      slideNumber,
-      success: true
-    });
+    // Always use asynchronous transcription via GCS
+    const result = await transcribeWithGcs(audioData, slideNumber);
+    return NextResponse.json(result);
 
   } catch (error: any) {
     console.error('Transcription error:', error);
@@ -100,6 +111,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: error.message || 'Invalid Google Cloud credentials. Please check your GOOGLE_CREDENTIALS_BASE64.', success: false },
         { status: 401 }
+      );
+    }
+
+    if (error.message?.includes('GCS_BUCKET_NAME')) {
+      return NextResponse.json(
+        { error: error.message, success: false },
+        { status: 400 }
       );
     }
 

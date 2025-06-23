@@ -1,12 +1,46 @@
-# SlideFlow
+# SlideFlow 🎤📊  
+*AI-powered presentation rehearsal with live transcription, timing insights, and contextual feedback.*
 
-SlideFlow is a web application designed to help students, professionals, and teams enhance their presentation delivery by optimizing slide timings, providing real-time feedback, and offering intuitive practice tools.
+## 🚀 Overview
 
-## Features
+**SlideFlow** is a smart rehearsal tool for presenters. Whether you’re pitching an idea, giving a lecture, or practicing a talk, SlideFlow helps you improve clarity, pacing, and confidence. Upload your slides, present as usual, and get instant AI-powered feedback per slide.
 
-- **PDF Upload**: Easily upload presentation slides in PDF format
-- **Timing & Practice**: Set and practice individual slide timings with real-time feedback
-- **User-Friendly Interface**: Simple, intuitive design that requires minimal setup
+## ✨ Key Features
 
-## Link
-tinyurl.com/1slideflow
+- ⏱ **Per-Slide Timing**  
+  Automatically tracks how long you spend on each slide to help balance pacing.
+
+- 🗣 **Live Speech Transcription**  
+  Uses Google Cloud Speech-to-Text (asynchronous) to transcribe your voice accurately—even for longer recordings.
+
+- 📌 **Slide-Aware Transcript Tagging**  
+  Transcripts are segmented by slide (e.g., `Slide 1:`, `Slide 2:`) to preserve contextual clarity.
+
+- 💬 **AI Chatbot Feedback**  
+  A built-in AI coach reads your transcript and provides helpful suggestions, summaries, and performance tips in real time.
+
+- 📤 **Export Options**  
+  Download transcripts as `.txt` or `.md` files for future reference or review.
+
+- 🧹 **Automatic File Cleanup**  
+  Audio files are uploaded to Google Cloud Storage, transcribed, and then automatically deleted to save space and ensure privacy.
+
+## 🤖 AI Capabilities
+
+- **Accurate Long-Form Transcription**: Handles multi-minute recordings using GCP’s asynchronous Speech-to-Text API.
+- **Slide-Level Feedback**: AI chatbot understands slide structure and offers per-slide advice.
+- **Real-Time Interaction**: Ask questions about your delivery, pacing, or content clarity.
+- **Contextual Awareness**: Transcripts are dynamically injected into the chatbot for slide-specific feedback.
+
+## 🧪 Live Demo
+
+🌐 [Try the Live Demo](https://slideflow1.vercel.app/)  
+> _Upload a PDF to begin a session._
+
+## 🛠 Tech Stack
+
+- **Frontend**: Next.js, TypeScript, Tailwind CSS  
+- **Backend**: Node.js (API Routes), Google Cloud Storage  
+- **AI Services**:  
+  - Google Cloud Speech-to-Text  
+  - Custom LLM-based Chatbot using context-fed transcripts  
