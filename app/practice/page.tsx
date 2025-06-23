@@ -246,20 +246,20 @@ export default function PracticePage() {
     setSlideTimings(Array(slideTimings.length).fill(0));
   };
 
-  // Calculate dynamic graph dimensions
-  const minGraphHeight = 200;
-  const maxGraphHeight = 500;
-  const minGraphWidth = 300;
-  const slideWidth = 60;
-  const maxTime = Math.max(...slideTimings.filter(t => t > 0), 60);
-  const graphHeight = 224; // px (h-56)
-  const pointMargin = 30; // px
-  const leftMargin = 60; // px (increased for more space before first slide)
-  const rightMargin = 130; // px (increased by 20px for more space after last slide)
-  const pointSpacing = slideTimings.length > 1 ? (Math.max(600, leftMargin + rightMargin + (slideTimings.length - 1) * 60) - leftMargin - rightMargin) / (slideTimings.length - 1) : 0;
-  const graphWidth = leftMargin + rightMargin + (slideTimings.length - 1) * pointSpacing;
-  const graphMargin = 20; // px
+  // Guard against rendering graph if there's no data
+  const hasTimingData = slideTimings.some(t => typeof t === 'number' && t > 0);
+
+  // Fixed graph dimensions for a non-scrolling container, per user instructions
+  const graphWidth = 600;
+  const graphHeight = 250;
+  const graphMargin = 20; // Top and bottom margin
   const innerGraphHeight = graphHeight - 2 * graphMargin;
+  
+  // Proportional point spacing
+  const pointSpacing = slideTimings.length > 0 ? graphWidth / (slideTimings.length + 1) : 0;
+  
+  // Y-axis max time
+  const maxTime = hasTimingData ? Math.max(...slideTimings.filter(t => typeof t === 'number' && t > 0), 1) : 60;
 
   const handleClearTranscripts = () => {
     clearTranscripts();
@@ -643,23 +643,73 @@ export default function PracticePage() {
                       <span className="text-xs text-gray-500">Current Slide</span>
                     </div>
                   </div>
-                  <div className="bg-white p-3 rounded-lg border border-gray-100 h-56 relative mt-2">
-                    {/* Y-axis grid lines and labels */}
-                    <div className="absolute left-0 top-0 h-full w-full">
-                      {[0, 1, 2, 3, 4].map((i) => {
-                        const y = graphMargin + (i * (innerGraphHeight / 4));
-                        return (
-                          <div key={i} className="absolute w-full border-t border-gray-100" style={{ top: `${(y / graphHeight) * 100}%`, left: 0 }}></div>
-                        );
-                      })}
-                    </div>
-                    <div className="absolute left-8 top-0 right-0 bottom-0 flex flex-col">
-                      <div className="flex-1 relative">
-                        <svg className="w-full h-full" width={graphWidth} height={graphHeight} viewBox={`0 0 ${graphWidth} ${graphHeight}`} preserveAspectRatio="xMidYMid meet">
-                          {/* ... existing code ... */}
-                        </svg>
+                  <div
+                    className="relative mt-2 overflow-hidden bg-white rounded-lg border"
+                    style={{ width: '100%', height: '250px' }}
+                  >
+                    {!hasTimingData ? (
+                      <div className="flex items-center justify-center h-full">
+                        <p className="text-sm text-gray-500">No slide timing data to display.</p>
                       </div>
-                    </div>
+                    ) : (
+                      <svg
+                        width="100%"
+                        height="100%"
+                        viewBox={`0 0 ${graphWidth} ${graphHeight}`}
+                        preserveAspectRatio="none"
+                        className="font-sans"
+                      >
+                        {/* Grid lines without text */}
+                        {[0, 1, 2, 3, 4].map(i => {
+                          const y = graphMargin + (i * (innerGraphHeight / 4));
+                          return <line key={i} x1="0" x2={graphWidth} y1={y} y2={y} stroke="#E5E7EB" strokeWidth="1"/>;
+                        })}
+
+                        {/* Line */}
+                        <polyline
+                          points={slideTimings.map((time, index) => {
+                            const safeTime = Math.min(Math.max(time || 0, 0), maxTime);
+                            const x = pointSpacing * (index + 1);
+                            const y = graphMargin + (innerGraphHeight - (safeTime / maxTime) * innerGraphHeight);
+                            return `${x},${y}`;
+                          }).join(' ')}
+                          fill="none"
+                          stroke="#4B5563"
+                          strokeWidth="2"
+                          strokeLinejoin="round"
+                        />
+
+                        {/* Points */}
+                        {slideTimings.map((time, index) => {
+                            if (!Number.isFinite(time)) return null;
+                            const safeTime = Math.min(Math.max(time || 0, 0), maxTime);
+                            const x = pointSpacing * (index + 1);
+                            const y = graphMargin + (innerGraphHeight - (safeTime / maxTime) * innerGraphHeight);
+                            const isCurrentSlide = currentSlide === index + 1;
+
+                            return (
+                                <g key={index} className="group">
+                                    <circle
+                                        cx={x}
+                                        cy={y}
+                                        r={isCurrentSlide ? 7 : 5}
+                                        fill={isCurrentSlide ? "#374151" : "#6B7280"}
+                                        stroke="white"
+                                        strokeWidth="2"
+                                        className="transition-all duration-150"
+                                    />
+                                    {/* Tooltip on Hover */}
+                                    <g className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <rect x={x - 25} y={y - 30} width="50" height="20" rx="4" fill="#374151" />
+                                        <text x={x} y={y - 16} textAnchor="middle" fill="white" fontSize="12">{formatTime(time || 0)}</text>
+                                    </g>
+                                    {/* Slide Number Label */}
+                                    <text x={x} y={graphHeight - 5} textAnchor="middle" fontSize="12" fill="#6B7280">{index + 1}</text>
+                                </g>
+                            );
+                        })}
+                      </svg>
+                    )}
                   </div>
                 </div>
               </div>
