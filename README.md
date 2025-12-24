@@ -1,39 +1,49 @@
-# SlideFlow 🎤📊  
-*AI-powered presentation rehearsal with live transcription, timing insights, and contextual feedback.*
+# SlideFlow
 
-## 🚀 Overview
+A presentation rehearsal tool that helps you practice and improve your presentations with automatic timing tracking and speech transcription.
 
-**SlideFlow** is a smart rehearsal tool for presenters. Whether you’re pitching an idea, giving a lecture, or practicing a talk, SlideFlow helps you improve clarity, pacing, and confidence. Upload your slides, present as usual, and get instant AI-powered feedback per slide.
+## Overview
 
-## ✨ Key Features
+SlideFlow allows you to upload your presentation PDF, practice your delivery, and get insights into your timing and speech. The tool tracks how long you spend on each slide and transcribes your speech for review.
 
-- ⏱ **Per-Slide Timing**  
-  Automatically tracks how long you spend on each slide to help balance pacing.
+## Features
 
-- 🗣 **Live Speech Transcription**  
-  Uses Google Cloud Speech-to-Text (asynchronous) to transcribe your voice accurately—even for longer recordings.
+- **Per-Slide Timing**: Automatically tracks time spent on each slide to help balance pacing
+- **Speech Transcription**: Uses Google Cloud Speech-to-Text to transcribe your voice accurately, even for longer recordings
+- **Slide-Aware Transcripts**: Transcripts are segmented by slide number for easy review
+- **Export Options**: Download transcripts as `.txt` or `.md` files
+- **Automatic Cleanup**: Audio files are automatically deleted after transcription to ensure privacy
 
-- 📌 **Slide-Aware Transcript Tagging**  
-  Transcripts are segmented by slide (e.g., `Slide 1:`, `Slide 2:`) to preserve contextual clarity.
+## Live Demo
 
-- 📤 **Export Options**  
-  Download transcripts as `.txt` or `.md` files for future reference or review.
+[Try the Live Demo](https://slideflow1.vercel.app/)
 
-- 🧹 **Automatic File Cleanup**  
-  Audio files are uploaded to Google Cloud Storage, transcribed, and then automatically deleted to save space and ensure privacy.
+## Tech Stack
 
-## 🤖 AI Capabilities
+- **Frontend**: Next.js, TypeScript, Tailwind CSS
+- **Backend**: Node.js (API Routes), Google Cloud Storage
+- **AI Services**: Google Cloud Speech-to-Text
 
-- **Accurate Long-Form Transcription**: Handles multi-minute recordings using GCP's asynchronous Speech-to-Text API.
+## Getting Started
 
-## 🧪 Live Demo
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-🌐 [Try the Live Demo](https://slideflow1.vercel.app/)  
-> _Upload a PDF to begin a session._
+2. Set up environment variables (see configuration section)
 
-## 🛠 Tech Stack
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
-- **Frontend**: Next.js, TypeScript, Tailwind CSS  
-- **Backend**: Node.js (API Routes), Google Cloud Storage  
-- **AI Services**:  
-  - Google Cloud Speech-to-Text  
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## Configuration
+
+The application requires Google Cloud credentials for speech transcription. Set up the `GOOGLE_CREDENTIALS_BASE64` environment variable with your Google Cloud service account credentials.
+
+## License
+
+MIT
