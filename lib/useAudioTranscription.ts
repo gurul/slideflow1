@@ -303,7 +303,6 @@ export function useAudioTranscription({ onTranscriptUpdate, onError }: UseAudioT
       .join(' ');
   }, [transcripts]);
 
-  // Get formatted transcript for chatbot context
   const getFormattedTranscript = useCallback(() => {
     const slideGroups = transcripts.reduce((acc, entry) => {
       if (!acc[entry.slideNumber]) {

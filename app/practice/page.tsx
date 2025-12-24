@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Play, Pause, Upload, Timer, Trash2, Info, FileText, Download } from 'lucide-react';
 import PDFViewer from '@/components/PDFViewer';
-import Chatbot from '@/components/Chatbot';
 import TranscriptDisplay from '@/components/TranscriptDisplay';
 import { useAudioTranscription } from '@/lib/useAudioTranscription';
 
@@ -79,29 +78,6 @@ export default function PracticePage() {
       });
 
       setPdfBase64(base64);
-
-      // Send PDF to Gemini for analysis
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: 'user',
-              parts: [{ text: "Analyze this presentation PDF for clarity, flow, and errors. Give me a brief, one-paragraph summary of your findings." }],
-            },
-          ],
-          pdfBase64: base64,
-        }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
-      }
-
-      const data = await res.json();
-      console.log(data.response);
     } catch (error) {
       console.error('Error processing PDF:', error);
       setError(error instanceof Error ? error.message : 'Failed to process PDF file');
@@ -161,17 +137,19 @@ export default function PracticePage() {
     stopRecording();
   };
 
-  const handleNextSlide = async () => {
-    if (isPlaying) {
-      await stopRecording(); // Wait for transcript to be saved
-    }
-    
+  const handleNextSlide = () => {
     const nextSlide = Math.min(totalSlides, currentSlide + 1);
     
+    // Update slide immediately for responsive UI
     setMaxReachedSlide(prev => Math.max(nextSlide, prev));
     setCurrentSlide(nextSlide);
 
+    // Stop recording in the background (don't await - transcription happens async)
     if (isPlaying) {
+      stopRecording().catch(err => {
+        console.error('Error stopping recording:', err);
+      });
+      // Start recording for the new slide immediately
       startRecording(nextSlide);
     }
   };
@@ -727,17 +705,6 @@ export default function PracticePage() {
             </div>
           </>
         )}
-
-        {/* Chatbot will only show up after presentation is uploaded */}
-        <Chatbot 
-          isVisible={hasUploadedPresentation} 
-          currentSlide={currentSlide}
-          totalSlides={totalSlides}
-          slideTimings={slideTimings}
-          pdfName={pdfFile?.name}
-          pdfBase64={pdfBase64}
-          transcripts={transcripts}
-        />
       </div>
     </div>
   );

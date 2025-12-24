@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button'
 import styles from './page.module.css'
 import { useState, useEffect } from 'react';
 import Footer from '@/components/Footer';
-import Chatbot from '@/components/Chatbot';
 
 export default function Home() {
   const [clicks, setClicks] = useState(0);
@@ -60,12 +59,6 @@ export default function Home() {
         </div>
       </div>
       <Footer />
-      <Chatbot 
-        isVisible={false}
-        currentSlide={1}
-        totalSlides={1}
-        slideTimings={[]}
-      />
     </>
   )
 } 

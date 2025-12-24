@@ -16,9 +16,6 @@
 - 📌 **Slide-Aware Transcript Tagging**  
   Transcripts are segmented by slide (e.g., `Slide 1:`, `Slide 2:`) to preserve contextual clarity.
 
-- 💬 **AI Chatbot Feedback**  
-  A built-in AI coach reads your transcript and provides helpful suggestions, summaries, and performance tips in real time.
-
 - 📤 **Export Options**  
   Download transcripts as `.txt` or `.md` files for future reference or review.
 
@@ -27,10 +24,7 @@
 
 ## 🤖 AI Capabilities
 
-- **Accurate Long-Form Transcription**: Handles multi-minute recordings using GCP’s asynchronous Speech-to-Text API.
-- **Slide-Level Feedback**: AI chatbot understands slide structure and offers per-slide advice.
-- **Real-Time Interaction**: Ask questions about your delivery, pacing, or content clarity.
-- **Contextual Awareness**: Transcripts are dynamically injected into the chatbot for slide-specific feedback.
+- **Accurate Long-Form Transcription**: Handles multi-minute recordings using GCP's asynchronous Speech-to-Text API.
 
 ## 🧪 Live Demo
 
@@ -43,4 +37,3 @@
 - **Backend**: Node.js (API Routes), Google Cloud Storage  
 - **AI Services**:  
   - Google Cloud Speech-to-Text  
-  - Custom LLM-based Chatbot using context-fed transcripts  
