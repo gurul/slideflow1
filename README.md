@@ -1,10 +1,10 @@
-# SlideFlow
+# slideflow
 
 A simple presentation rehearsal tool for tracking slide timing and reviewing what you say while presenting.
 
 ## Overview
 
-SlideFlow lets you upload a presentation PDF, practice your delivery, and review basic timing and speech data. It records how long you spend on each slide and generates slide-by-slide transcripts so you can reflect and improve.
+slideflow lets you upload a presentation PDF, practice your delivery, and review basic timing and speech data. It records how long you spend on each slide and generates slide-by-slide transcripts so you can reflect and improve.
 
 ## Features
 
