@@ -236,10 +236,14 @@ export function useAudioTranscription({ onTranscriptUpdate, onError }: UseAudioT
     }
     
     if (mediaRecorderRef.current) {
+      // Store the slide number for the onstop handler before setting it
+      const slideNumberForStop = slideNumber;
+
       // Set the onstop handler each time we start, to capture the correct slide number
       mediaRecorderRef.current.onstop = async () => {
+        // Use the slide number that was active when recording started
         if (audioChunksRef.current.length > 0) {
-          await transcribeAudio(slideNumber);
+          await transcribeAudio(slideNumberForStop);
         }
         setRecordingSlideNumber(null);
 
@@ -250,12 +254,23 @@ export function useAudioTranscription({ onTranscriptUpdate, onError }: UseAudioT
         }
       };
 
+      // Only start if MediaRecorder is inactive (fully stopped)
       if (mediaRecorderRef.current.state === 'inactive') {
         setCurrentSlide(slideNumber);
         setRecordingSlideNumber(slideNumber);
         audioChunksRef.current = [];
         mediaRecorderRef.current.start();
         setIsRecording(true);
+      } else {
+        // If not inactive, wait a bit and try again
+        await new Promise(resolve => setTimeout(resolve, 50));
+        if (mediaRecorderRef.current.state === 'inactive') {
+          setCurrentSlide(slideNumber);
+          setRecordingSlideNumber(slideNumber);
+          audioChunksRef.current = [];
+          mediaRecorderRef.current.start();
+          setIsRecording(true);
+        }
       }
     }
   }, [initializeRecording, transcribeAudio]);

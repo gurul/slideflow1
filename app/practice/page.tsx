@@ -137,19 +137,20 @@ export default function PracticePage() {
     stopRecording();
   };
 
-  const handleNextSlide = () => {
+  const handleNextSlide = async () => {
     const nextSlide = Math.min(totalSlides, currentSlide + 1);
     
-    // Update slide immediately for responsive UI
+    // Stop recording first and wait for MediaRecorder to stop
+    if (isPlaying) {
+      await stopRecording();
+    }
+    
+    // Update slide after stopping recording
     setMaxReachedSlide(prev => Math.max(nextSlide, prev));
     setCurrentSlide(nextSlide);
 
-    // Stop recording in the background (don't await - transcription happens async)
+    // Start recording for the new slide
     if (isPlaying) {
-      stopRecording().catch(err => {
-        console.error('Error stopping recording:', err);
-      });
-      // Start recording for the new slide immediately
       startRecording(nextSlide);
     }
   };
