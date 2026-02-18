@@ -264,7 +264,8 @@ export function useAudioTranscription({ onTranscriptUpdate, onError }: UseAudioT
       } else {
         // If not inactive, wait a bit and try again
         await new Promise(resolve => setTimeout(resolve, 50));
-        if (mediaRecorderRef.current.state === 'inactive') {
+        const stateAfterWait = mediaRecorderRef.current.state as string;
+        if (stateAfterWait === 'inactive') {
           setCurrentSlide(slideNumber);
           setRecordingSlideNumber(slideNumber);
           audioChunksRef.current = [];
